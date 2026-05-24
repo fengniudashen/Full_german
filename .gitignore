@@ -1,0 +1,24 @@
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+coverage/
+.tooling/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated native folders can be recreated with flutter create if needed.
+android/.gradle/
+ios/Pods/
+macos/Pods/
