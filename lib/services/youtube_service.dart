@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -31,33 +30,32 @@ class YoutubeService {
       return exePath;
     }
 
-    // Delete old version if forcing update
+    // Delete old version
     if (File(exePath).existsSync()) {
       File(exePath).deleteSync();
     }
 
-    // Download yt-dlp (follows redirects via GitHub's /latest/)
-    final client = http.Client();
+    // Download yt-dlp using dart:io HttpClient (properly follows redirects)
+    final client = HttpClient();
     try {
-      final request = http.Request('GET', Uri.parse(_ytDlpUrl));
-      request.followRedirects = true;
-      final response = await client.send(request);
+      final request = await client.getUrl(Uri.parse(_ytDlpUrl));
+      final response = await request.close();
       if (response.statusCode != 200) {
         throw Exception('下载 yt-dlp 失败 (HTTP ${response.statusCode})');
       }
 
-    final totalBytes = response.contentLength ?? 0;
-    final sink = File(exePath).openWrite();
-    int received = 0;
+      final totalBytes = response.contentLength;
+      final sink = File(exePath).openWrite();
+      int received = 0;
 
-    await for (final chunk in response.stream) {
-      sink.add(chunk);
-      received += chunk.length;
-      if (totalBytes > 0) {
-        onProgress?.call(received / totalBytes);
+      await for (final chunk in response) {
+        sink.add(chunk);
+        received += chunk.length;
+        if (totalBytes > 0) {
+          onProgress?.call(received / totalBytes);
+        }
       }
-    }
-    await sink.close();
+      await sink.close();
     } finally {
       client.close();
     }
@@ -108,10 +106,14 @@ class YoutubeService {
     final dir = Directory(outputDir);
     if (!dir.existsSync()) dir.createSync(recursive: true);
 
-    // Download audio + subtitles in one pass
+    // Clean up any previous partial downloads in this dir
+    for (final f in dir.listSync().whereType<File>()) {
+      f.deleteSync();
+    }
+
+    // Download without format restriction - let yt-dlp pick the best available
     onStatus?.call('正在下载音频和字幕…');
     var result = await Process.run(exe, [
-      '--format', 'bestaudio/best',
       '-o', p.join(outputDir, '%(title)s.%(ext)s'),
       '--write-subs',
       '--write-auto-subs',
@@ -122,37 +124,25 @@ class YoutubeService {
       videoUrl,
     ]);
 
-    // Fallback: if bestaudio fails, try downloading best (video+audio)
-    if (result.exitCode != 0) {
-      onStatus?.call('重试下载（使用备用格式）…');
-      result = await Process.run(exe, [
-        '--format', 'best',
-        '-o', p.join(outputDir, '%(title)s.%(ext)s'),
-        '--write-subs',
-        '--write-auto-subs',
-        '--sub-lang', 'de',
-        '--sub-format', 'vtt',
-        '--no-playlist',
-        '--no-warnings',
-        videoUrl,
-      ]);
-    }
-
     if (result.exitCode != 0) {
       throw Exception('下载失败：${result.stderr}');
     }
 
-    // Find the downloaded audio file
-    final audioExts = ['.m4a', '.mp3', '.webm', '.ogg', '.opus', '.wav', '.mp4'];
-    final audioFiles = dir
+    // Find the downloaded media file (could be video or audio)
+    final mediaExts = ['.m4a', '.mp3', '.webm', '.ogg', '.opus', '.wav', '.mp4', '.mkv'];
+    final mediaFiles = dir
         .listSync()
         .whereType<File>()
-        .where((f) => audioExts.any((ext) => f.path.toLowerCase().endsWith(ext)))
+        .where((f) {
+          final lower = f.path.toLowerCase();
+          return mediaExts.any((ext) => lower.endsWith(ext)) &&
+                 !lower.endsWith('.vtt') && !lower.endsWith('.srt');
+        })
         .toList();
-    if (audioFiles.isEmpty) {
-      throw Exception('未找到下载的音频文件');
+    if (mediaFiles.isEmpty) {
+      throw Exception('未找到下载的媒体文件');
     }
-    final audioPath = audioFiles.last.path;
+    final audioPath = mediaFiles.last.path;
 
     // Find subtitle file
     String? subtitlePath;
