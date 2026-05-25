@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/app_state.dart';
 import '../services/ai_service.dart';
+import '../services/dictionary_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 
@@ -79,10 +80,28 @@ class _AnalysisPageState extends State<AnalysisPage> {
 
     switch (_mode) {
       case _AnalysisMode.word:
-        result = await service.lookupWord(
-          text,
-          _sentenceCtx.isNotEmpty ? _sentenceCtx : text,
-        );
+        // Try local dictionary first
+        final dictService = context.read<AppState>().dictionaryService;
+        final entry = await dictService.lookup(text);
+        final localResult = StringBuffer();
+        if (entry.definitions.first != '暂未找到释义。你可以在语法笔记中记录自己的解释。') {
+          localResult.writeln('### 📖 词典释义（${entry.source}）');
+          if (entry.phonetic.isNotEmpty) {
+            localResult.writeln('**音标**: ${entry.phonetic}');
+          }
+          for (final d in entry.definitions) {
+            localResult.writeln('- $d');
+          }
+          for (final e in entry.examples) {
+            localResult.writeln('> $e');
+          }
+          localResult.writeln('\n---\n### 🤖 AI 深度解析\n');
+        }
+        result = localResult.toString() +
+            await service.lookupWord(
+              text,
+              _sentenceCtx.isNotEmpty ? _sentenceCtx : text,
+            );
       case _AnalysisMode.grammar:
         result = await service.analyzeGrammar(text);
       case _AnalysisMode.translate:
