@@ -27,13 +27,22 @@ class SubtitleParser {
 
   /// Extract word-level timings from YouTube VTT <c> tags.
   ///
-  /// YouTube auto-subs use progressive cues:
-  ///   Line 1: Previously completed text (plain, NO <c> tags) — repeat, skip
-  ///   Line 2: New words with <c> tags and word-level timestamps — extract
-  /// Static cues (0.01s, no <c> tags at all) are also skipped.
+  /// YouTube auto-subs use progressive cues with two patterns:
+  ///
+  /// **Pattern A** – word-level timestamps in `<c>` tags:
+  ///   Line 1: Previously completed text (plain) → skip
+  ///   Line 2: New words: `word<TS><c> word</c>...` → extract
+  ///
+  /// **Pattern B** – plain text without `<c>` tags:
+  ///   Line 1: Previously completed text → skip
+  ///   Line 2+: New word(s) as plain text → extract using cue start
+  ///
+  /// **Static cues** (duration < 50ms): pure repeats → skip entirely.
   static List<_TimedWord> _extractWordTimings(String content) {
     final words = <_TimedWord>[];
     final lines = content.split('\n');
+    // Pattern to detect sound annotations like [jubel], [Musik], etc.
+    final soundAnnotation = RegExp(r'^\[.+\]$');
 
     for (var i = 0; i < lines.length; i++) {
       final line = lines[i].trim();
@@ -45,49 +54,77 @@ class SubtitleParser {
       if (times.length != 2) continue;
 
       final cueStart = _parseVttTime(times[0].trim());
-      if (cueStart == null) continue;
+      final cueEnd = _parseVttTime(times[1].trim().split(' ').first);
+      if (cueStart == null || cueEnd == null) continue;
 
-      // Read content lines after timestamp (skip blank lines)
+      // Skip static/freeze-frame cues (duration < 50ms)
+      if (cueEnd - cueStart < 50) continue;
+
+      // Read content lines (skip blank lines)
       final contentLines = <String>[];
       var j = i + 1;
       while (j < lines.length) {
         final cl = lines[j].trim();
-        // Stop at next timestamp or after content followed by blank
         if (cl.contains('-->')) break;
         if (cl.isNotEmpty) {
           contentLines.add(lines[j]);
         } else if (contentLines.isNotEmpty) {
-          break; // blank line after content = end of cue
+          break;
         }
         j++;
       }
 
-      // Only process lines that contain <c> tags (= new words).
-      // Lines without <c> tags are repeated text from prior cues.
-      for (final cl in contentLines) {
-        if (!cl.contains('<c>')) continue;
+      if (contentLines.isEmpty) continue;
 
-        // Extract the leading word before first timestamp tag
-        final firstWordMatch = RegExp(r'^([^<]+?)(?:<\d)').firstMatch(cl);
-        if (firstWordMatch != null) {
-          final word = firstWordMatch.group(1)!.trim();
-          if (word.isNotEmpty) {
-            words.add(_TimedWord(word, cueStart));
+      // Determine if any line has <c> tags
+      final hasTaggedLine = contentLines.any((cl) => cl.contains('<c>'));
+
+      if (hasTaggedLine) {
+        // Pattern A: Extract from lines with <c> tags (skip plain repeat lines)
+        for (final cl in contentLines) {
+          if (!cl.contains('<c>')) continue;
+
+          // Leading word before first timestamp
+          final firstWordMatch =
+              RegExp(r'^([^<]+?)(?:<\d)').firstMatch(cl);
+          if (firstWordMatch != null) {
+            final word = firstWordMatch.group(1)!.trim();
+            if (word.isNotEmpty && !soundAnnotation.hasMatch(word)) {
+              words.add(_TimedWord(word, cueStart));
+            }
+          }
+
+          // <timestamp><c> word</c> pairs
+          final tagPattern = RegExp(
+            r'<(\d{2}:\d{2}:\d{2}\.\d{3})><c>\s*([^<]+?)\s*</c>',
+          );
+          for (final match in tagPattern.allMatches(cl)) {
+            final ts = _parseVttTime(match.group(1)!);
+            final word = match.group(2)!.trim();
+            if (ts != null && word.isNotEmpty && !soundAnnotation.hasMatch(word)) {
+              words.add(_TimedWord(word, ts));
+            }
           }
         }
-
-        // Extract <timestamp><c> word</c> pairs
-        final tagPattern = RegExp(
-          r'<(\d{2}:\d{2}:\d{2}\.\d{3})><c>\s*([^<]+?)\s*</c>',
-        );
-        for (final match in tagPattern.allMatches(cl)) {
-          final ts = _parseVttTime(match.group(1)!);
-          final word = match.group(2)!.trim();
-          if (ts != null && word.isNotEmpty) {
-            words.add(_TimedWord(word, ts));
+      } else if (contentLines.length >= 2) {
+        // Pattern B: No <c> tags, multi-line cue.
+        // Line 1 = repeat of previous content → skip
+        // Line 2+ = new plain text → extract
+        for (var k = 1; k < contentLines.length; k++) {
+          final text = contentLines[k]
+              .trim()
+              .replaceAll(RegExp(r'<[^>]+>'), '')
+              .trim();
+          if (text.isEmpty || soundAnnotation.hasMatch(text)) continue;
+          // Split into individual words and add with cue start time
+          for (final w in text.split(RegExp(r'\s+'))) {
+            if (w.isNotEmpty) {
+              words.add(_TimedWord(w, cueStart));
+            }
           }
         }
       }
+      // Single line without <c> tags = repeat/static → skip
     }
 
     return words;
