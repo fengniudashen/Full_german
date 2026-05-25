@@ -61,8 +61,8 @@ class AiProvider {
     AiProvider(
       id: 'minimax',
       name: 'MiniMax',
-      baseUrl: 'https://api.minimax.chat',
-      defaultModel: 'MiniMax-Text-01',
+      baseUrl: 'https://api.minimaxi.com',
+      defaultModel: 'MiniMax-M2.7',
     ),
     AiProvider(
       id: 'glm',
