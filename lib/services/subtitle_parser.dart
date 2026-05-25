@@ -121,7 +121,9 @@ class SubtitleParser {
       }
     }
 
-    // 2. Merge short consecutive segments into longer ones (~sentence level)
+    // 2. Merge short consecutive segments into sentence-level blocks.
+    // YouTube auto-subs produce fragments of 1-5 words each.
+    // We merge aggressively until we detect sentence boundaries.
     final merged = <SubtitleEntry>[];
     SubtitleEntry? current;
 
@@ -133,11 +135,22 @@ class SubtitleParser {
 
       final gap = entry.startMs - current.endMs;
       final combined = '${current.text} ${entry.text}';
-      final endsWithPunctuation =
-          RegExp(r'[.!?;:]$').hasMatch(current.text.trim());
+      final currentText = current.text.trim();
 
-      // Merge if gap < 1s, text < 200 chars, and no sentence-ending punctuation
-      if (gap < 1000 && combined.length < 200 && !endsWithPunctuation) {
+      // Check if current segment ends a sentence
+      final endsWithSentencePunctuation =
+          RegExp(r'[.!?]$').hasMatch(currentText);
+
+      // Merge conditions:
+      // - Gap < 3s (allow pauses within sentences)
+      // - Combined text < 300 chars (don't make overly long sentences)
+      // - Current segment doesn't end with sentence punctuation
+      // - OR current text is very short (< 20 chars) — probably not a full sentence
+      final shouldMerge = gap < 3000 &&
+          combined.length < 300 &&
+          (!endsWithSentencePunctuation || currentText.length < 20);
+
+      if (shouldMerge) {
         current = SubtitleEntry(
           startMs: current.startMs,
           endMs: entry.endMs,
@@ -150,7 +163,24 @@ class SubtitleParser {
     }
     if (current != null) merged.add(current);
 
-    return merged;
+    // 3. Post-process: merge any remaining very short segments (< 15 chars)
+    // with the next segment
+    final result = <SubtitleEntry>[];
+    for (var i = 0; i < merged.length; i++) {
+      if (i < merged.length - 1 && merged[i].text.trim().length < 15) {
+        // Merge with next
+        final next = merged[i + 1];
+        merged[i + 1] = SubtitleEntry(
+          startMs: merged[i].startMs,
+          endMs: next.endMs,
+          text: '${merged[i].text} ${next.text}',
+        );
+      } else {
+        result.add(merged[i]);
+      }
+    }
+
+    return result;
   }
 
   /// Parse VTT timestamp: "00:00:01.234" or "01.234"
