@@ -345,6 +345,9 @@ class _AiSettings extends StatelessWidget {
             final key = state.settings.providerKeys[p.id] ??
                 (p.id == 'deepseek' ? state.settings.deepseekApiKey : '');
             final hasKey = key.isNotEmpty;
+            final customUrl = state.settings.providerUrls[p.id] ?? '';
+            final hasCustomUrl = customUrl.isNotEmpty;
+            final displayUrl = hasCustomUrl ? customUrl : p.baseUrl;
             return ListTile(
               dense: true,
               leading: Icon(
@@ -353,14 +356,30 @@ class _AiSettings extends StatelessWidget {
                 color: hasKey ? AppTheme.emerald : theme.colorScheme.outlineVariant,
               ),
               title: Text(p.name, style: const TextStyle(fontSize: 14)),
-              subtitle: Text(
-                hasKey ? '已配置 ✓' : '未配置',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: hasKey
-                      ? AppTheme.emerald
-                      : theme.colorScheme.onSurfaceVariant,
-                ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    hasKey ? 'Key: 已配置 ✓' : 'Key: 未配置',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: hasKey
+                          ? AppTheme.emerald
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  Text(
+                    'URL: $displayUrl',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: hasCustomUrl
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -371,7 +390,7 @@ class _AiSettings extends StatelessWidget {
                       child: const Text('切换', style: TextStyle(fontSize: 12)),
                     ),
                   FilledButton.tonal(
-                    onPressed: () => _editProviderKey(context, p),
+                    onPressed: () => _editProviderConfig(context, p),
                     style: FilledButton.styleFrom(
                       minimumSize: const Size(56, 32),
                       textStyle: const TextStyle(fontSize: 12),
@@ -383,21 +402,21 @@ class _AiSettings extends StatelessWidget {
             );
           }),
 
-          // Custom provider URL (only when custom is selected)
+          // Custom provider name (only when custom is selected)
           if (activeId == 'custom') ...[
             const Divider(height: 20),
             ListTile(
               dense: true,
-              leading: const Icon(Icons.link, size: 18),
-              title: const Text('自定义 API 地址', style: TextStyle(fontSize: 14)),
+              leading: const Icon(Icons.label_outline, size: 18),
+              title: const Text('自定义服务名称', style: TextStyle(fontSize: 14)),
               subtitle: Text(
-                state.settings.customProviderUrl.isEmpty
+                state.settings.customProviderName.isEmpty
                     ? '未设置'
-                    : state.settings.customProviderUrl,
+                    : state.settings.customProviderName,
                 style: const TextStyle(fontSize: 12),
               ),
               trailing: FilledButton.tonal(
-                onPressed: () => _editCustomProvider(context),
+                onPressed: () => _editCustomName(context),
                 style: FilledButton.styleFrom(
                   minimumSize: const Size(56, 32),
                   textStyle: const TextStyle(fontSize: 12),
@@ -422,48 +441,65 @@ class _AiSettings extends StatelessWidget {
     );
   }
 
-  Future<void> _editProviderKey(BuildContext context, AiProvider preset) async {
+  Future<void> _editProviderConfig(BuildContext context, AiProvider preset) async {
     final currentKey = state.settings.providerKeys[preset.id] ??
         (preset.id == 'deepseek' ? state.settings.deepseekApiKey : '');
+    final currentUrl = state.settings.providerUrls[preset.id] ?? '';
+    final currentModel = state.settings.providerModels[preset.id] ?? '';
+
     final keyCtrl = TextEditingController(text: currentKey);
-    final modelCtrl = TextEditingController(
-      text: state.settings.providerModels[preset.id] ?? '',
+    final urlCtrl = TextEditingController(
+      text: currentUrl.isNotEmpty ? currentUrl : preset.baseUrl,
     );
+    final modelCtrl = TextEditingController(text: currentModel);
 
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('${preset.name} 配置'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: keyCtrl,
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: 'API Key',
-                hintText: preset.id == 'claude' ? 'sk-ant-...' : 'sk-...',
-                border: const OutlineInputBorder(),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: urlCtrl,
+                decoration: InputDecoration(
+                  labelText: 'API 地址',
+                  hintText: preset.baseUrl,
+                  border: const OutlineInputBorder(),
+                  helperText: '默认: ${preset.baseUrl}',
+                  helperMaxLines: 2,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: modelCtrl,
-              decoration: InputDecoration(
-                labelText: '模型名称 (可选)',
-                hintText: '默认: ${preset.defaultModel}',
-                border: const OutlineInputBorder(),
+              const SizedBox(height: 12),
+              TextField(
+                controller: keyCtrl,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'API Key',
+                  hintText: preset.id == 'claude' ? 'sk-ant-...' : 'sk-...',
+                  border: const OutlineInputBorder(),
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _getProviderHint(preset.id),
-              style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(ctx).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              TextField(
+                controller: modelCtrl,
+                decoration: InputDecoration(
+                  labelText: '模型名称 (可选)',
+                  hintText: '默认: ${preset.defaultModel}',
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _getProviderHint(preset.id),
+                style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -480,19 +516,25 @@ class _AiSettings extends StatelessWidget {
 
     if (result == true && context.mounted) {
       await state.updateProviderKey(preset.id, keyCtrl.text.trim());
+      final url = urlCtrl.text.trim();
+      // Only save custom URL if different from default
+      if (url.isNotEmpty && url != preset.baseUrl) {
+        await state.updateProviderUrl(preset.id, url);
+      } else if (url == preset.baseUrl || url.isEmpty) {
+        // Clear custom URL to use default
+        await state.updateProviderUrl(preset.id, '');
+      }
       final model = modelCtrl.text.trim();
       if (model.isNotEmpty) {
         await state.updateProviderModel(preset.id, model);
       }
     }
     keyCtrl.dispose();
+    urlCtrl.dispose();
     modelCtrl.dispose();
   }
 
-  Future<void> _editCustomProvider(BuildContext context) async {
-    final urlCtrl = TextEditingController(
-      text: state.settings.customProviderUrl,
-    );
+  Future<void> _editCustomName(BuildContext context) async {
     final nameCtrl = TextEditingController(
       text: state.settings.customProviderName,
     );
@@ -500,36 +542,14 @@ class _AiSettings extends StatelessWidget {
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('自定义 AI 服务'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: urlCtrl,
-              decoration: const InputDecoration(
-                labelText: 'API 地址',
-                hintText: 'https://your-api.example.com',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: nameCtrl,
-              decoration: const InputDecoration(
-                labelText: '显示名称',
-                hintText: '我的 AI 服务',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '需要兼容 OpenAI Chat Completions API 格式。\n'
-              'API 地址应指向 /v1/chat/completions 的上级路径。',
-              style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(ctx).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-          ],
+        title: const Text('自定义服务名称'),
+        content: TextField(
+          controller: nameCtrl,
+          decoration: const InputDecoration(
+            labelText: '显示名称',
+            hintText: '我的 AI 服务',
+            border: OutlineInputBorder(),
+          ),
         ),
         actions: [
           TextButton(
@@ -546,11 +566,10 @@ class _AiSettings extends StatelessWidget {
 
     if (result == true && context.mounted) {
       await state.updateCustomProvider(
-        urlCtrl.text.trim(),
+        state.settings.customProviderUrl,
         nameCtrl.text.trim(),
       );
     }
-    urlCtrl.dispose();
     nameCtrl.dispose();
   }
 

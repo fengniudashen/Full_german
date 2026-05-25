@@ -95,7 +95,7 @@ class AiProvider {
   Map<String, String> toSettingsMap() => {
         'ai_${id}_key': apiKey,
         if (customModel != null) 'ai_${id}_model': customModel!,
-        if (isCustom) 'ai_${id}_url': baseUrl,
+        'ai_${id}_url': baseUrl,
         if (isCustom) 'ai_${id}_name': name,
       };
 

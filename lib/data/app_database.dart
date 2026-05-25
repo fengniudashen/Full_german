@@ -195,6 +195,7 @@ class AppDatabase extends GeneratedDatabase {
     // Parse provider keys: ai_<id>_key → { id: key }
     final providerKeys = <String, String>{};
     final providerModels = <String, String>{};
+    final providerUrls = <String, String>{};
     for (final entry in map.entries) {
       final match = RegExp(r'^ai_(.+)_key$').firstMatch(entry.key);
       if (match != null && entry.value.isNotEmpty) {
@@ -203,6 +204,10 @@ class AppDatabase extends GeneratedDatabase {
       final modelMatch = RegExp(r'^ai_(.+)_model$').firstMatch(entry.key);
       if (modelMatch != null && entry.value.isNotEmpty) {
         providerModels[modelMatch.group(1)!] = entry.value;
+      }
+      final urlMatch = RegExp(r'^ai_(.+)_url$').firstMatch(entry.key);
+      if (urlMatch != null && entry.value.isNotEmpty) {
+        providerUrls[urlMatch.group(1)!] = entry.value;
       }
     }
 
@@ -222,6 +227,7 @@ class AppDatabase extends GeneratedDatabase {
       activeProviderId: map['ai_active_provider'] ?? 'deepseek',
       providerKeys: providerKeys,
       providerModels: providerModels,
+      providerUrls: providerUrls,
       customProviderUrl: map['ai_custom_url'] ?? '',
       customProviderName: map['ai_custom_name'] ?? '',
     );

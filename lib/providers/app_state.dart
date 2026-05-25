@@ -163,6 +163,15 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Set custom URL for a provider.
+  Future<void> updateProviderUrl(String providerId, String url) async {
+    await database.saveSetting('ai_${providerId}_url', url);
+    final urls = Map<String, String>.from(_settings.providerUrls);
+    urls[providerId] = url;
+    _settings = _settings.copyWith(providerUrls: urls);
+    notifyListeners();
+  }
+
   /// Set custom provider URL and name.
   Future<void> updateCustomProvider(String url, String name) async {
     await database.saveSetting('ai_custom_url', url);

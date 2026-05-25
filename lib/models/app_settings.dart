@@ -11,6 +11,7 @@ class AppSettings {
     this.activeProviderId = 'deepseek',
     this.providerKeys = const {},
     this.providerModels = const {},
+    this.providerUrls = const {},
     this.customProviderUrl = '',
     this.customProviderName = '',
   });
@@ -24,6 +25,7 @@ class AppSettings {
   final String activeProviderId;
   final Map<String, String> providerKeys;   // id → apiKey
   final Map<String, String> providerModels; // id → custom model
+  final Map<String, String> providerUrls;   // id → custom URL
   final String customProviderUrl;
   final String customProviderName;
 
@@ -35,15 +37,15 @@ class AppSettings {
     );
     final key = providerKeys[activeProviderId] ??
         (activeProviderId == 'deepseek' ? deepseekApiKey : '');
+    final customUrl = providerUrls[activeProviderId];
     return AiProvider(
       id: preset.id,
       name: preset.isCustom
           ? (customProviderName.isNotEmpty ? customProviderName : preset.name)
           : preset.name,
-      baseUrl:
-          preset.isCustom && customProviderUrl.isNotEmpty
-              ? customProviderUrl
-              : preset.baseUrl,
+      baseUrl: customUrl != null && customUrl.isNotEmpty
+          ? customUrl
+          : preset.baseUrl,
       defaultModel: preset.defaultModel,
       apiKey: key,
       customModel: providerModels[activeProviderId],
@@ -59,15 +61,15 @@ class AppSettings {
     );
     final key = providerKeys[id] ??
         (id == 'deepseek' ? deepseekApiKey : '');
+    final customUrl = providerUrls[id];
     return AiProvider(
       id: preset.id,
       name: preset.isCustom
           ? (customProviderName.isNotEmpty ? customProviderName : preset.name)
           : preset.name,
-      baseUrl:
-          preset.isCustom && customProviderUrl.isNotEmpty
-              ? customProviderUrl
-              : preset.baseUrl,
+      baseUrl: customUrl != null && customUrl.isNotEmpty
+          ? customUrl
+          : preset.baseUrl,
       defaultModel: preset.defaultModel,
       apiKey: key,
       customModel: providerModels[id],
@@ -85,6 +87,7 @@ class AppSettings {
     String? activeProviderId,
     Map<String, String>? providerKeys,
     Map<String, String>? providerModels,
+    Map<String, String>? providerUrls,
     String? customProviderUrl,
     String? customProviderName,
   }) {
@@ -98,6 +101,7 @@ class AppSettings {
       activeProviderId: activeProviderId ?? this.activeProviderId,
       providerKeys: providerKeys ?? this.providerKeys,
       providerModels: providerModels ?? this.providerModels,
+      providerUrls: providerUrls ?? this.providerUrls,
       customProviderUrl: customProviderUrl ?? this.customProviderUrl,
       customProviderName: customProviderName ?? this.customProviderName,
     );
