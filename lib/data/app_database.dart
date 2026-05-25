@@ -16,7 +16,7 @@ class AppDatabase extends GeneratedDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -30,6 +30,9 @@ class AppDatabase extends GeneratedDatabase {
         onUpgrade: (m, from, to) async {
           if (from < 2) {
             await _upgradeToV2();
+          }
+          if (from < 3) {
+            await _upgradeToV3();
           }
         },
         beforeOpen: (_) async {
@@ -182,6 +185,16 @@ class AppDatabase extends GeneratedDatabase {
         'CREATE INDEX IF NOT EXISTS idx_sessions_project ON practice_sessions(project_id, started_at DESC)',
       );
     } catch (_) {}
+  }
+
+  Future<void> _upgradeToV3() async {
+    // Remove duplicate wrong words, keeping only the latest entry per unique combo
+    await customStatement('''
+      DELETE FROM wrong_words WHERE id NOT IN (
+        SELECT MAX(id) FROM wrong_words
+        GROUP BY project_id, sentence_id, wrong_form, correct_form
+      )
+    ''');
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -492,6 +505,15 @@ class AppDatabase extends GeneratedDatabase {
     if (errors.isEmpty) return;
     final now = DateTime.now().millisecondsSinceEpoch;
     await transaction(() async {
+      // Remove previous wrong words for this sentence to avoid duplicates
+      await customUpdate(
+        'DELETE FROM wrong_words WHERE project_id = ? AND sentence_id = ?',
+        variables: [
+          Variable.withInt(projectId),
+          Variable.withInt(sentenceId),
+        ],
+        updates: {},
+      );
       for (final e in errors) {
         await customInsert(
           '''
