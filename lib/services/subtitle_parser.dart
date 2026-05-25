@@ -11,8 +11,131 @@ class SubtitleParser {
     return parseSrt(content);
   }
 
-  /// Parse WebVTT content.
+  /// Parse WebVTT content using word-level timestamps from YouTube auto-subs.
+  /// YouTube VTT uses progressive cues with <c> tags containing word timestamps.
   static List<SubtitleEntry> parseVtt(String content) {
+    // Step 1: Extract word-level timing from progressive cues
+    final words = _extractWordTimings(content);
+    if (words.isEmpty) {
+      // Fallback: simple cue-level parsing
+      return _parseVttSimple(content);
+    }
+
+    // Step 2: Group words into sentences based on punctuation
+    return _wordsToSentences(words);
+  }
+
+  /// Extract word-level timings from YouTube VTT <c> tags.
+  ///
+  /// YouTube auto-subs use progressive cues:
+  ///   Line 1: Previously completed text (plain, NO <c> tags) — repeat, skip
+  ///   Line 2: New words with <c> tags and word-level timestamps — extract
+  /// Static cues (0.01s, no <c> tags at all) are also skipped.
+  static List<_TimedWord> _extractWordTimings(String content) {
+    final words = <_TimedWord>[];
+    final lines = content.split('\n');
+
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i].trim();
+
+      // Look for timestamp lines
+      if (!line.contains('-->')) continue;
+
+      final times = line.split('-->');
+      if (times.length != 2) continue;
+
+      final cueStart = _parseVttTime(times[0].trim());
+      if (cueStart == null) continue;
+
+      // Read content lines after timestamp (skip blank lines)
+      final contentLines = <String>[];
+      var j = i + 1;
+      while (j < lines.length) {
+        final cl = lines[j].trim();
+        // Stop at next timestamp or after content followed by blank
+        if (cl.contains('-->')) break;
+        if (cl.isNotEmpty) {
+          contentLines.add(lines[j]);
+        } else if (contentLines.isNotEmpty) {
+          break; // blank line after content = end of cue
+        }
+        j++;
+      }
+
+      // Only process lines that contain <c> tags (= new words).
+      // Lines without <c> tags are repeated text from prior cues.
+      for (final cl in contentLines) {
+        if (!cl.contains('<c>')) continue;
+
+        // Extract the leading word before first timestamp tag
+        final firstWordMatch = RegExp(r'^([^<]+?)(?:<\d)').firstMatch(cl);
+        if (firstWordMatch != null) {
+          final word = firstWordMatch.group(1)!.trim();
+          if (word.isNotEmpty) {
+            words.add(_TimedWord(word, cueStart));
+          }
+        }
+
+        // Extract <timestamp><c> word</c> pairs
+        final tagPattern = RegExp(
+          r'<(\d{2}:\d{2}:\d{2}\.\d{3})><c>\s*([^<]+?)\s*</c>',
+        );
+        for (final match in tagPattern.allMatches(cl)) {
+          final ts = _parseVttTime(match.group(1)!);
+          final word = match.group(2)!.trim();
+          if (ts != null && word.isNotEmpty) {
+            words.add(_TimedWord(word, ts));
+          }
+        }
+      }
+    }
+
+    return words;
+  }
+
+  /// Group timed words into sentences based on sentence-ending punctuation.
+  static List<SubtitleEntry> _wordsToSentences(List<_TimedWord> words) {
+    if (words.isEmpty) return [];
+
+    final sentences = <SubtitleEntry>[];
+    var sentenceWords = <_TimedWord>[];
+
+    for (final word in words) {
+      sentenceWords.add(word);
+
+      // Check if this word ends a sentence.
+      // A period after a number (e.g. "21.") is likely an ordinal, not a
+      // sentence end, unless followed by a capital letter in the next word.
+      final endsWithPunctuation = RegExp(r'[.!?]$').hasMatch(word.text);
+      final isOrdinalNumber = RegExp(r'^\d+\.$').hasMatch(word.text);
+
+      if (endsWithPunctuation && !isOrdinalNumber && sentenceWords.length >= 3) {
+        // Create sentence
+        final text = sentenceWords.map((w) => w.text).join(' ');
+        sentences.add(SubtitleEntry(
+          startMs: sentenceWords.first.timestampMs,
+          endMs: sentenceWords.last.timestampMs + 500, // Add 500ms buffer
+          text: text,
+        ));
+        sentenceWords = [];
+      }
+    }
+
+    // Add remaining words as final sentence
+    if (sentenceWords.isNotEmpty) {
+      final text = sentenceWords.map((w) => w.text).join(' ');
+      sentences.add(SubtitleEntry(
+        startMs: sentenceWords.first.timestampMs,
+        endMs: sentenceWords.last.timestampMs + 500,
+        text: text,
+      ));
+    }
+
+    return sentences;
+  }
+
+  /// Fallback simple VTT parser (for non-YouTube VTTs without word timing).
+  static List<SubtitleEntry> _parseVttSimple(String content) {
     final entries = <SubtitleEntry>[];
     final lines = content.split('\n');
     int i = 0;
@@ -34,7 +157,6 @@ class SubtitleParser {
           final textLines = <String>[];
           i++;
           while (i < lines.length && lines[i].trim().isNotEmpty) {
-            // Remove VTT tags like <c> </c> <00:00:01.234>
             final cleaned = lines[i]
                 .trim()
                 .replaceAll(RegExp(r'<[^>]+>'), '')
@@ -55,7 +177,7 @@ class SubtitleParser {
       i++;
     }
 
-    return _deduplicateAndMerge(entries);
+    return _mergeShortSegments(entries);
   }
 
   /// Parse SRT content.
@@ -69,7 +191,6 @@ class SubtitleParser {
       final lines = block.trim().split('\n');
       if (lines.length < 2) continue;
 
-      // Find the timestamp line
       final tsLine = lines.firstWhere(
         (l) => l.contains('-->'),
         orElse: () => '',
@@ -98,21 +219,19 @@ class SubtitleParser {
       }
     }
 
-    return _deduplicateAndMerge(entries);
+    return _mergeShortSegments(entries);
   }
 
-  /// Merge short segments into sentence-level blocks.
-  /// YouTube auto-subs often have overlapping/repeated fragments.
-  static List<SubtitleEntry> _deduplicateAndMerge(List<SubtitleEntry> raw) {
+  /// Merge short consecutive segments into sentence-level blocks.
+  static List<SubtitleEntry> _mergeShortSegments(List<SubtitleEntry> raw) {
     if (raw.isEmpty) return raw;
 
-    // 1. Remove duplicates (same text, overlapping time)
+    // Remove duplicates
     final deduped = <SubtitleEntry>[];
     for (final entry in raw) {
       if (deduped.isEmpty || deduped.last.text != entry.text) {
         deduped.add(entry);
       } else {
-        // Extend end time
         deduped[deduped.length - 1] = SubtitleEntry(
           startMs: deduped.last.startMs,
           endMs: entry.endMs,
@@ -121,9 +240,7 @@ class SubtitleParser {
       }
     }
 
-    // 2. Merge short consecutive segments into sentence-level blocks.
-    // YouTube auto-subs produce fragments of 1-5 words each.
-    // We merge aggressively until we detect sentence boundaries.
+    // Merge into sentences
     final merged = <SubtitleEntry>[];
     SubtitleEntry? current;
 
@@ -136,19 +253,11 @@ class SubtitleParser {
       final gap = entry.startMs - current.endMs;
       final combined = '${current.text} ${entry.text}';
       final currentText = current.text.trim();
+      final endsWithPunctuation = RegExp(r'[.!?]$').hasMatch(currentText);
 
-      // Check if current segment ends a sentence
-      final endsWithSentencePunctuation =
-          RegExp(r'[.!?]$').hasMatch(currentText);
-
-      // Merge conditions:
-      // - Gap < 3s (allow pauses within sentences)
-      // - Combined text < 300 chars (don't make overly long sentences)
-      // - Current segment doesn't end with sentence punctuation
-      // - OR current text is very short (< 20 chars) — probably not a full sentence
       final shouldMerge = gap < 3000 &&
           combined.length < 300 &&
-          (!endsWithSentencePunctuation || currentText.length < 20);
+          (!endsWithPunctuation || currentText.length < 20);
 
       if (shouldMerge) {
         current = SubtitleEntry(
@@ -163,29 +272,11 @@ class SubtitleParser {
     }
     if (current != null) merged.add(current);
 
-    // 3. Post-process: merge any remaining very short segments (< 15 chars)
-    // with the next segment
-    final result = <SubtitleEntry>[];
-    for (var i = 0; i < merged.length; i++) {
-      if (i < merged.length - 1 && merged[i].text.trim().length < 15) {
-        // Merge with next
-        final next = merged[i + 1];
-        merged[i + 1] = SubtitleEntry(
-          startMs: merged[i].startMs,
-          endMs: next.endMs,
-          text: '${merged[i].text} ${next.text}',
-        );
-      } else {
-        result.add(merged[i]);
-      }
-    }
-
-    return result;
+    return merged;
   }
 
   /// Parse VTT timestamp: "00:00:01.234" or "01.234"
   static int? _parseVttTime(String ts) {
-    // Remove position/alignment tags
     final clean = ts.split(' ').first.trim();
     final parts = clean.split(':');
     try {
@@ -215,6 +306,12 @@ class SubtitleParser {
   static int? _parseSrtTime(String ts) {
     return _parseVttTime(ts.replaceAll(',', '.'));
   }
+}
+
+class _TimedWord {
+  const _TimedWord(this.text, this.timestampMs);
+  final String text;
+  final int timestampMs;
 }
 
 class SubtitleEntry {
