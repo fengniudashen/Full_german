@@ -47,6 +47,13 @@ class _DictationPageState extends State<DictationPage> {
   int _sessionWrong = 0;
   DateTime? _sessionStart;
 
+  // Audio progress & loop state
+  Duration _currentPos = Duration.zero;
+  bool _loopSentence = false;
+  bool _rangeLoopEnabled = false;
+  double _loopStartFrac = 0.0; // 0.0–1.0 within sentence
+  double _loopEndFrac = 1.0;   // 0.0–1.0 within sentence
+
   StudySentence? get _current =>
       _sentences.isEmpty ? null : _sentences[_clamp(_index)];
 
@@ -149,6 +156,10 @@ class _DictationPageState extends State<DictationPage> {
   Widget _buildProgressCard(StudySentence s) {
     final theme = Theme.of(context);
     final progress = _sentences.isEmpty ? 0.0 : (_index + 1) / _sentences.length;
+    final sentenceDur = s.endMs - s.startMs;
+    final posInSentence =
+        (_currentPos.inMilliseconds - s.startMs).clamp(0, sentenceDur);
+    final posFrac = sentenceDur > 0 ? posInSentence / sentenceDur : 0.0;
 
     return GlassCard(
       padding: const EdgeInsets.all(18),
@@ -202,14 +213,140 @@ class _DictationPageState extends State<DictationPage> {
             ),
           ),
           const SizedBox(height: 14),
-          FilledButton.icon(
-            onPressed: s.hasValidRange ? _playCurrentSentence : null,
-            icon: const Icon(Icons.play_circle_outline),
-            label: const Text('播放当前句'),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(double.infinity, 48),
+
+          // ── Audio progress bar with loop region ──
+          if (s.hasValidRange) ...[
+            _buildAudioProgressBar(s, theme, sentenceDur, posFrac),
+            const SizedBox(height: 6),
+            // Time labels
+            Row(
+              children: [
+                Text(
+                  formatDurationMs(s.startMs + posInSentence),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontFeatures: [const FontFeature.tabularFigures()],
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  formatDurationMs(s.endMs),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontFeatures: [const FontFeature.tabularFigures()],
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
-          ),
+            const SizedBox(height: 10),
+            // Control buttons row
+            Row(
+              children: [
+                // Play / Pause
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _playCurrentSentence,
+                    icon: StreamBuilder<bool>(
+                      stream: _player.playingStream,
+                      builder: (_, snap) => Icon(
+                        (snap.data ?? false) ? Icons.pause : Icons.play_arrow,
+                      ),
+                    ),
+                    label: const Text('播放'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 44),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Sentence loop toggle
+                _LoopButton(
+                  icon: Icons.repeat_one,
+                  tooltip: '整句循环',
+                  active: _loopSentence,
+                  onPressed: () {
+                    setState(() {
+                      _loopSentence = !_loopSentence;
+                      if (_loopSentence) _rangeLoopEnabled = false;
+                    });
+                  },
+                ),
+                const SizedBox(width: 4),
+                // Range loop toggle
+                _LoopButton(
+                  icon: Icons.repeat,
+                  tooltip: '区间循环 (拖拽下方滑块)',
+                  active: _rangeLoopEnabled,
+                  onPressed: () {
+                    setState(() {
+                      _rangeLoopEnabled = !_rangeLoopEnabled;
+                      if (_rangeLoopEnabled) _loopSentence = false;
+                    });
+                  },
+                ),
+              ],
+            ),
+            // Range slider for custom loop (only when range loop enabled)
+            if (_rangeLoopEnabled) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(Icons.linear_scale,
+                      size: 14, color: theme.colorScheme.primary),
+                  const SizedBox(width: 6),
+                  Text('拖拽设置循环区间',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                      )),
+                ],
+              ),
+              RangeSlider(
+                values: RangeValues(_loopStartFrac, _loopEndFrac),
+                onChanged: (v) {
+                  setState(() {
+                    _loopStartFrac = v.start;
+                    _loopEndFrac = v.end;
+                  });
+                },
+                activeColor: theme.colorScheme.primary,
+                inactiveColor: theme.colorScheme.surfaceContainerHighest,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      formatDurationMs(
+                          s.startMs + (sentenceDur * _loopStartFrac).round()),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontFeatures: [const FontFeature.tabularFigures()],
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                    Text(
+                      formatDurationMs(
+                          s.startMs + (sentenceDur * _loopEndFrac).round()),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontFeatures: [const FontFeature.tabularFigures()],
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ] else ...[
+            FilledButton.icon(
+              onPressed: null,
+              icon: const Icon(Icons.play_circle_outline),
+              label: const Text('播放当前句'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(double.infinity, 48),
+              ),
+            ),
+          ],
+
           if (s.attemptCount > 0) ...[
             const SizedBox(height: 8),
             Row(
@@ -227,20 +364,53 @@ class _DictationPageState extends State<DictationPage> {
               ],
             ),
           ],
-          // Debug info
-          if (_project != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              '🔊 ${_project!.audioPath.split(RegExp(r'[\\/]')).last}  |  '
-              '⏱️ ${s.startMs}ms → ${s.endMs}ms',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-                fontSize: 10,
-              ),
-            ),
-          ],
         ],
       ),
+    );
+  }
+
+  /// Build the audio waveform-style progress bar.
+  Widget _buildAudioProgressBar(
+      StudySentence s, ThemeData theme, int sentenceDur, double posFrac) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        return GestureDetector(
+          onTapDown: (details) {
+            if (sentenceDur <= 0) return;
+            final frac = (details.localPosition.dx / width).clamp(0.0, 1.0);
+            final seekMs = s.startMs + (sentenceDur * frac).round();
+            _player.seek(Duration(milliseconds: seekMs));
+          },
+          onHorizontalDragUpdate: (details) {
+            if (sentenceDur <= 0) return;
+            final frac = (details.localPosition.dx / width).clamp(0.0, 1.0);
+            final seekMs = s.startMs + (sentenceDur * frac).round();
+            _player.seek(Duration(milliseconds: seekMs));
+          },
+          child: Container(
+            height: 36,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: CustomPaint(
+                size: Size(width, 36),
+                painter: _AudioProgressPainter(
+                  progress: posFrac,
+                  loopStart: _rangeLoopEnabled ? _loopStartFrac : null,
+                  loopEnd: _rangeLoopEnabled ? _loopEndFrac : null,
+                  progressColor: theme.colorScheme.primary,
+                  loopColor: theme.colorScheme.primary.withValues(alpha: 0.15),
+                  cursorColor: theme.colorScheme.onSurface,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -437,9 +607,36 @@ class _DictationPageState extends State<DictationPage> {
   }
 
   void _handlePosition(Duration pos) {
+    if (mounted) setState(() => _currentPos = pos);
+
+    final s = _current;
+    if (s == null || !s.hasValidRange) return;
+
+    final sentenceEnd = Duration(milliseconds: s.endMs);
+    final sentenceStart = Duration(milliseconds: s.startMs);
+    final sentenceDur = s.endMs - s.startMs;
+
+    if (_rangeLoopEnabled && sentenceDur > 0) {
+      final loopEnd = Duration(
+        milliseconds: s.startMs + (sentenceDur * _loopEndFrac).round(),
+      );
+      final loopStart = Duration(
+        milliseconds: s.startMs + (sentenceDur * _loopStartFrac).round(),
+      );
+      if (pos >= loopEnd) {
+        _player.seek(loopStart);
+        return;
+      }
+    } else if (_loopSentence) {
+      if (pos >= sentenceEnd) {
+        _player.seek(sentenceStart);
+        return;
+      }
+    }
+
+    // Non-loop: stop at sentence end
     final stop = _stopAt;
-    if (stop == null) return;
-    if (pos >= stop) {
+    if (stop != null && pos >= stop) {
       _stopAt = null;
       _player.pause();
       _player.seek(stop);
@@ -460,10 +657,28 @@ class _DictationPageState extends State<DictationPage> {
       return;
     }
     _cacheAnswer();
-    _stopAt = Duration(milliseconds: s.endMs);
+
+    // Toggle play/pause
+    if (_player.playing) {
+      await _player.pause();
+      return;
+    }
+
+    // Determine start position
+    final sentenceDur = s.endMs - s.startMs;
+    int seekMs;
+    if (_rangeLoopEnabled) {
+      seekMs = s.startMs + (sentenceDur * _loopStartFrac).round();
+    } else {
+      seekMs = s.startMs;
+    }
+
+    _stopAt = (_loopSentence || _rangeLoopEnabled)
+        ? null // Loop modes handle stopping in _handlePosition
+        : Duration(milliseconds: s.endMs);
     try {
       await _player.pause();
-      await _player.seek(Duration(milliseconds: s.startMs));
+      await _player.seek(Duration(milliseconds: seekMs));
       await _player.play();
     } catch (e) {
       if (mounted) {
@@ -555,7 +770,13 @@ class _DictationPageState extends State<DictationPage> {
 
   void _goTo(int next) {
     _cacheAnswer();
-    setState(() => _index = _clamp(next));
+    _player.pause();
+    setState(() {
+      _index = _clamp(next);
+      // Reset loop range when changing sentences
+      _loopStartFrac = 0.0;
+      _loopEndFrac = 1.0;
+    });
     _syncAnswer();
   }
 
@@ -592,4 +813,140 @@ class _DictationPageState extends State<DictationPage> {
     if (_sentences.isEmpty) return 0;
     return v.clamp(0, _sentences.length - 1).toInt();
   }
+}
+
+/// Toggle button for loop modes.
+class _LoopButton extends StatelessWidget {
+  const _LoopButton({
+    required this.icon,
+    required this.tooltip,
+    required this.active,
+    required this.onPressed,
+  });
+  final IconData icon;
+  final String tooltip;
+  final bool active;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: active
+            ? theme.colorScheme.primary.withValues(alpha: 0.15)
+            : Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(
+            color: active
+                ? theme.colorScheme.primary
+                : theme.colorScheme.outlineVariant,
+          ),
+        ),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(10),
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Icon(
+              icon,
+              color: active
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
+              size: 20,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Custom painter for the audio progress bar with optional loop region.
+class _AudioProgressPainter extends CustomPainter {
+  _AudioProgressPainter({
+    required this.progress,
+    this.loopStart,
+    this.loopEnd,
+    required this.progressColor,
+    required this.loopColor,
+    required this.cursorColor,
+  });
+
+  final double progress;
+  final double? loopStart;
+  final double? loopEnd;
+  final Color progressColor;
+  final Color loopColor;
+  final Color cursorColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Draw loop region highlight
+    if (loopStart != null && loopEnd != null) {
+      final loopRect = Rect.fromLTWH(
+        size.width * loopStart!,
+        0,
+        size.width * (loopEnd! - loopStart!),
+        size.height,
+      );
+      canvas.drawRect(
+        loopRect,
+        Paint()..color = loopColor,
+      );
+      // Draw loop boundary lines
+      final boundaryPaint = Paint()
+        ..color = progressColor.withValues(alpha: 0.5)
+        ..strokeWidth = 1.5;
+      canvas.drawLine(
+        Offset(loopRect.left, 0),
+        Offset(loopRect.left, size.height),
+        boundaryPaint,
+      );
+      canvas.drawLine(
+        Offset(loopRect.right, 0),
+        Offset(loopRect.right, size.height),
+        boundaryPaint,
+      );
+    }
+
+    // Draw progress fill
+    final progressRect = Rect.fromLTWH(
+      0,
+      0,
+      size.width * progress.clamp(0.0, 1.0),
+      size.height,
+    );
+    canvas.drawRect(
+      progressRect,
+      Paint()..color = progressColor.withValues(alpha: 0.3),
+    );
+
+    // Draw playback cursor
+    final cursorX = size.width * progress.clamp(0.0, 1.0);
+    canvas.drawLine(
+      Offset(cursorX, 0),
+      Offset(cursorX, size.height),
+      Paint()
+        ..color = cursorColor
+        ..strokeWidth = 2.5
+        ..strokeCap = StrokeCap.round,
+    );
+
+    // Draw small circle at cursor top
+    canvas.drawCircle(
+      Offset(cursorX, 3),
+      3,
+      Paint()..color = cursorColor,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_AudioProgressPainter old) =>
+      old.progress != progress ||
+      old.loopStart != loopStart ||
+      old.loopEnd != loopEnd;
 }
