@@ -16,7 +16,7 @@ class AppDatabase extends GeneratedDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -33,6 +33,9 @@ class AppDatabase extends GeneratedDatabase {
           }
           if (from < 3) {
             await _upgradeToV3();
+          }
+          if (from < 4) {
+            await _upgradeToV4();
           }
         },
         beforeOpen: (_) async {
@@ -128,6 +131,16 @@ class AppDatabase extends GeneratedDatabase {
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_dictations_project ON dictations(project_id, checked_at DESC)',
     );
+
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS quick_notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        content TEXT NOT NULL,
+        source_sentence TEXT NOT NULL DEFAULT '',
+        project_name TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL
+      )
+    ''');
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_sessions_project ON practice_sessions(project_id, started_at DESC)',
     );
@@ -201,6 +214,92 @@ class AppDatabase extends GeneratedDatabase {
       await customStatement(
           'ALTER TABLE wrong_words ADD COLUMN next_review_at INTEGER');
     } catch (_) {}
+  }
+
+  Future<void> _upgradeToV4() async {
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS quick_notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        content TEXT NOT NULL,
+        source_sentence TEXT NOT NULL DEFAULT '',
+        project_name TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL
+      )
+    ''');
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  QUICK NOTES (灵光一闪)
+  // ═══════════════════════════════════════════════════════════
+
+  Future<void> insertNote(String content, {String sourceSentence = '', String projectName = ''}) async {
+    await customInsert(
+      'INSERT INTO quick_notes (content, source_sentence, project_name, created_at) VALUES (?, ?, ?, ?)',
+      variables: [Variable.withString(content), Variable.withString(sourceSentence), Variable.withString(projectName), Variable.withInt(DateTime.now().millisecondsSinceEpoch)],
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getNotes() async {
+    final rows = await customSelect(
+      'SELECT * FROM quick_notes ORDER BY created_at DESC',
+    ).get();
+    return rows.map((r) => {
+      'id': r.read<int>('id'),
+      'content': r.read<String>('content'),
+      'source_sentence': r.read<String>('source_sentence'),
+      'project_name': r.read<String>('project_name'),
+      'created_at': r.read<int>('created_at'),
+    }).toList();
+  }
+
+  Future<void> deleteNote(int id) async {
+    await customUpdate('DELETE FROM quick_notes WHERE id = ?', variables: [Variable.withInt(id)]);
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  句海拾遗 / 词海拾遗 (Random discovery)
+  // ═══════════════════════════════════════════════════════════
+
+  /// Get N random sentences from all projects.
+  Future<List<Map<String, dynamic>>> getRandomSentences(int count) async {
+    final rows = await customSelect(
+      '''
+      SELECT s.id, s.text, s.start_ms, s.end_ms, p.name AS project_name, p.audio_path
+      FROM sentences s
+      INNER JOIN projects p ON p.id = s.project_id
+      WHERE length(s.text) > 10
+      ORDER BY RANDOM()
+      LIMIT ?
+      ''',
+      variables: [Variable.withInt(count)],
+    ).get();
+    return rows.map((r) => {
+      'id': r.read<int>('id'),
+      'text': r.read<String>('text'),
+      'start_ms': r.read<int>('start_ms'),
+      'end_ms': r.read<int>('end_ms'),
+      'project_name': r.read<String>('project_name'),
+      'audio_path': r.read<String>('audio_path'),
+    }).toList();
+  }
+
+  /// Get N random wrong words (not yet mastered).
+  Future<List<WrongWord>> getRandomWrongWords(int count) async {
+    final rows = await customSelect(
+      '''
+      SELECT w.id, w.project_id, w.sentence_id,
+             w.wrong_form, w.correct_form, w.sentence_text,
+             w.created_at, w.mastered, w.review_count, w.next_review_at,
+             p.name AS project_name
+      FROM wrong_words w
+      INNER JOIN projects p ON p.id = w.project_id
+      WHERE w.mastered = 0
+      ORDER BY RANDOM()
+      LIMIT ?
+      ''',
+      variables: [Variable.withInt(count)],
+    ).get();
+    return rows.map(_wrongWordFromRow).toList(growable: false);
   }
 
   // ═══════════════════════════════════════════════════════════

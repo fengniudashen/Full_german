@@ -10,6 +10,8 @@ import '../widgets/gradient_header.dart';
 import '../widgets/metric_pill.dart';
 import '../widgets/mini_activity_chart.dart';
 import '../widgets/responsive_page.dart';
+import 'discovery_page.dart';
+import 'quick_notes_page.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -28,6 +30,8 @@ class DashboardPage extends StatelessWidget {
                 _buildHero(context, state),
                 const SizedBox(height: 20),
                 _buildStatsRow(context, state),
+                const SizedBox(height: 20),
+                _buildQuickActions(context),
                 const SizedBox(height: 20),
                 _buildActivityAndRecent(context, state),
                 const SizedBox(height: 32),
@@ -136,6 +140,49 @@ class DashboardPage extends StatelessWidget {
     });
   }
 
+  Widget _buildQuickActions(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Expanded(
+          child: _QuickActionCard(
+            icon: Icons.lightbulb,
+            label: '灵光一闪',
+            color: AppTheme.gold,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const QuickNotesPage()),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _QuickActionCard(
+            icon: Icons.waves,
+            label: '句海拾遗',
+            color: theme.colorScheme.primary,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const DiscoveryPage()),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _QuickActionCard(
+            icon: Icons.text_fields,
+            label: '词海拾遗',
+            color: AppTheme.emerald,
+            onTap: () {
+              final page = DiscoveryPage();
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => page),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildActivityAndRecent(BuildContext context, AppState state) {
     return LayoutBuilder(builder: (context, constraints) {
       final wide = constraints.maxWidth >= 800;
@@ -212,6 +259,43 @@ class _ActivityCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _QuickActionCard extends StatelessWidget {
+  const _QuickActionCard({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return GlassCard(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppTheme.borderMd,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: 28),
+              const SizedBox(height: 8),
+              Text(label,
+                  style: theme.textTheme.labelMedium
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
       ),
     );
   }
