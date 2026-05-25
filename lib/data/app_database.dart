@@ -312,6 +312,29 @@ class AppDatabase extends GeneratedDatabase {
     });
   }
 
+  /// Insert sentences with pre-set timestamps (e.g. from subtitle files).
+  Future<void> insertTimedSentences(
+    int projectId,
+    List<({String text, int startMs, int endMs})> entries,
+  ) async {
+    await transaction(() async {
+      for (var i = 0; i < entries.length; i++) {
+        final e = entries[i];
+        await customInsert(
+          'INSERT INTO sentences (project_id, position_index, text, start_ms, end_ms) '
+          'VALUES (?, ?, ?, ?, ?)',
+          variables: [
+            Variable.withInt(projectId),
+            Variable.withInt(i),
+            Variable.withString(e.text),
+            Variable.withInt(e.startMs),
+            Variable.withInt(e.endMs),
+          ],
+        );
+      }
+    });
+  }
+
   Future<List<StudySentence>> getSentencesForProject(int projectId) async {
     final rows = await customSelect(
       '''

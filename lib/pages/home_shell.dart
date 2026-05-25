@@ -9,6 +9,7 @@ import 'projects_page.dart';
 import 'search_page.dart';
 import 'settings_page.dart';
 import 'wrong_words_page.dart';
+import 'youtube_page.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -23,6 +24,7 @@ class _HomeShellState extends State<HomeShell> {
   static const _destinations = [
     _NavItem(Icons.dashboard_outlined, Icons.dashboard, '总览'),
     _NavItem(Icons.folder_outlined, Icons.folder, '项目'),
+    _NavItem(Icons.video_library_outlined, Icons.video_library, 'YouTube'),
     _NavItem(Icons.spellcheck_outlined, Icons.spellcheck, '错词本'),
     _NavItem(Icons.settings_outlined, Icons.settings, '设置'),
   ];
@@ -35,6 +37,7 @@ class _HomeShellState extends State<HomeShell> {
     final pages = const [
       DashboardPage(),
       ProjectsPage(),
+      YoutubePage(),
       WrongWordsPage(),
       SettingsPage(),
     ];
