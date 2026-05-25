@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
 import 'text_comparator.dart';
 
@@ -27,8 +28,34 @@ class DictionaryService {
   final http.Client _client;
 
   final Map<String, DictionaryEntry> _cache = {};
+  bool _bundledLoaded = false;
+  final Map<String, String> _bundledDict = {};
 
   void dispose() => _client.close();
+
+  int get bundledDictSize => _bundledDict.length;
+
+  /// Load the bundled dictionary asset (called once lazily).
+  Future<void> _ensureBundledDict() async {
+    if (_bundledLoaded) return;
+    _bundledLoaded = true;
+    try {
+      final data = await rootBundle.loadString('assets/deu_eng_dict.tsv');
+      final lines = const LineSplitter().convert(data);
+      for (final line in lines) {
+        if (line.isEmpty) continue;
+        final tabIdx = line.indexOf('\t');
+        if (tabIdx <= 0) continue;
+        final word = line.substring(0, tabIdx).trim();
+        final def = line.substring(tabIdx + 1).trim();
+        if (word.isNotEmpty && def.isNotEmpty && !word.startsWith('00database')) {
+          _bundledDict[word] = def;
+        }
+      }
+    } catch (_) {
+      // Asset not available (e.g. in tests)
+    }
+  }
 
   static const Map<String, List<String>> _offlineDefinitions = {
     'ich': ['pron. 第一人称单数代词：我。'],
@@ -106,6 +133,18 @@ class DictionaryService {
     if (local != null) {
       final entry = DictionaryEntry(
         word: word, source: '本地简易词库', definitions: local,
+      );
+      _cache[word] = entry;
+      return entry;
+    }
+
+    // Check bundled dictionary
+    await _ensureBundledDict();
+    final bundled = _bundledDict[word];
+    if (bundled != null) {
+      final entry = DictionaryEntry(
+        word: word, source: '内置词典 (FreeDict)',
+        definitions: [bundled],
       );
       _cache[word] = entry;
       return entry;

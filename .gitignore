@@ -18,6 +18,9 @@ coverage/
 .DS_Store
 Thumbs.db
 
+# Large binary downloads
+tools/*.tar.xz
+
 # Generated native folders can be recreated with flutter create if needed.
 android/.gradle/
 ios/Pods/

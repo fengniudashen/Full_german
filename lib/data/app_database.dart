@@ -40,6 +40,23 @@ class AppDatabase extends GeneratedDatabase {
         },
         beforeOpen: (_) async {
           await customStatement('PRAGMA foreign_keys = ON');
+          // Ensure next_review_at column exists (handles corrupted migration state)
+          try {
+            await customStatement(
+                'ALTER TABLE wrong_words ADD COLUMN next_review_at INTEGER');
+          } catch (_) {}
+          // Ensure quick_notes table exists
+          try {
+            await customStatement('''
+              CREATE TABLE IF NOT EXISTS quick_notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                content TEXT NOT NULL,
+                source_sentence TEXT NOT NULL DEFAULT '',
+                project_name TEXT NOT NULL DEFAULT '',
+                created_at INTEGER NOT NULL
+              )
+            ''');
+          } catch (_) {}
         },
       );
 
