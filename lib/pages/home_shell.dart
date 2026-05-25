@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../theme/app_theme.dart';
 import 'analysis_page.dart';
+import 'bookmarks_page.dart';
 import 'dashboard_page.dart';
 import 'flashcard_page.dart';
 import 'new_project_page.dart';
@@ -96,6 +97,14 @@ class _HomeShellState extends State<HomeShell> {
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                   builder: (_) => const AnalysisPage()),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.bookmark_outline),
+            tooltip: '金句本',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                  builder: (_) => const BookmarksPage()),
             ),
           ),
           IconButton(
@@ -309,6 +318,14 @@ class _DesktopTopBar extends StatelessWidget {
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                     builder: (_) => const AnalysisPage()),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.bookmark_outline),
+              tooltip: '金句本',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                    builder: (_) => const BookmarksPage()),
               ),
             ),
             IconButton(

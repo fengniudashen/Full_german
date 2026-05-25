@@ -74,6 +74,9 @@ class _FlashcardPageState extends State<FlashcardPage>
     if (_words.isEmpty) return;
     final word = _words[_currentIndex];
     context.read<AppState>().markWordMastered(word.id, true);
+    // Schedule next review with Ebbinghaus spacing
+    context.read<AppState>().database.scheduleNextReview(
+        word.id, word.reviewCount + 1);
     setState(() => _masteredInSession++);
     _next();
   }
@@ -82,6 +85,8 @@ class _FlashcardPageState extends State<FlashcardPage>
     if (_words.isEmpty) return;
     final word = _words[_currentIndex];
     context.read<AppState>().markWordMastered(word.id, false);
+    // Reset to short interval for not-mastered words
+    context.read<AppState>().database.scheduleNextReview(word.id, 0);
     _next();
   }
 

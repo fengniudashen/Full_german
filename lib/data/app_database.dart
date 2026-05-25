@@ -93,6 +93,7 @@ class AppDatabase extends GeneratedDatabase {
         created_at INTEGER NOT NULL,
         mastered INTEGER NOT NULL DEFAULT 0,
         review_count INTEGER NOT NULL DEFAULT 0,
+        next_review_at INTEGER,
         FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
         FOREIGN KEY(sentence_id) REFERENCES sentences(id) ON DELETE CASCADE
       )
@@ -195,6 +196,11 @@ class AppDatabase extends GeneratedDatabase {
         GROUP BY project_id, sentence_id, wrong_form, correct_form
       )
     ''');
+    // Add next_review_at column for spaced repetition
+    try {
+      await customStatement(
+          'ALTER TABLE wrong_words ADD COLUMN next_review_at INTEGER');
+    } catch (_) {}
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -444,6 +450,29 @@ class AppDatabase extends GeneratedDatabase {
     );
   }
 
+  /// Get all bookmarked sentences across all projects.
+  Future<List<Map<String, dynamic>>> getBookmarkedSentences() async {
+    final rows = await customSelect(
+      '''
+      SELECT s.id, s.project_id, s.text, s.start_ms, s.end_ms,
+             p.name AS project_name, p.audio_path
+      FROM sentences s
+      INNER JOIN projects p ON p.id = s.project_id
+      WHERE s.bookmarked = 1
+      ORDER BY s.id DESC
+      ''',
+    ).get();
+    return rows.map((r) => {
+      'id': r.read<int>('id'),
+      'projectId': r.read<int>('project_id'),
+      'text': r.read<String>('text'),
+      'startMs': r.read<int>('start_ms'),
+      'endMs': r.read<int>('end_ms'),
+      'projectName': r.read<String>('project_name'),
+      'audioPath': r.read<String>('audio_path'),
+    }).toList();
+  }
+
   // ═══════════════════════════════════════════════════════════
   //  DICTATIONS
   // ═══════════════════════════════════════════════════════════
@@ -550,7 +579,7 @@ class AppDatabase extends GeneratedDatabase {
       '''
       SELECT w.id, w.project_id, w.sentence_id,
              w.wrong_form, w.correct_form, w.sentence_text,
-             w.created_at, w.mastered, w.review_count,
+             w.created_at, w.mastered, w.review_count, w.next_review_at,
              p.name AS project_name
       FROM wrong_words w
       INNER JOIN projects p ON p.id = w.project_id
@@ -569,7 +598,44 @@ class AppDatabase extends GeneratedDatabase {
         Variable.withInt(mastered ? 1 : 0),
         Variable.withInt(wordId),
       ],
+      updates: {},
     );
+  }
+
+  /// Update next review time using Ebbinghaus spacing.
+  Future<void> scheduleNextReview(int wordId, int reviewCount) async {
+    final intervals = WrongWord.ebIntervals;
+    final idx = reviewCount.clamp(0, intervals.length - 1);
+    final nextReview = DateTime.now().add(Duration(hours: intervals[idx]));
+    await customUpdate(
+      'UPDATE wrong_words SET review_count = ?, next_review_at = ? WHERE id = ?',
+      variables: [
+        Variable.withInt(reviewCount),
+        Variable.withInt(nextReview.millisecondsSinceEpoch),
+        Variable.withInt(wordId),
+      ],
+      updates: {},
+    );
+  }
+
+  /// Get wrong words that are due for review now.
+  Future<List<WrongWord>> getDueForReview() async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final rows = await customSelect(
+      '''
+      SELECT w.id, w.project_id, w.sentence_id,
+             w.wrong_form, w.correct_form, w.sentence_text,
+             w.created_at, w.mastered, w.review_count, w.next_review_at,
+             p.name AS project_name
+      FROM wrong_words w
+      INNER JOIN projects p ON p.id = w.project_id
+      WHERE w.mastered = 0
+        AND (w.next_review_at IS NULL OR w.next_review_at <= ?)
+      ORDER BY w.next_review_at ASC, w.created_at ASC
+      ''',
+      variables: [Variable.withInt(now)],
+    ).get();
+    return rows.map(_wrongWordFromRow).toList(growable: false);
   }
 
   Future<int> getUnmasteredCount() async {
@@ -770,6 +836,7 @@ class AppDatabase extends GeneratedDatabase {
   }
 
   WrongWord _wrongWordFromRow(QueryRow row) {
+    final nextReview = row.readNullable<int>('next_review_at');
     return WrongWord(
       id: row.read<int>('id'),
       projectId: row.read<int>('project_id'),
@@ -782,6 +849,9 @@ class AppDatabase extends GeneratedDatabase {
           DateTime.fromMillisecondsSinceEpoch(row.read<int>('created_at')),
       mastered: row.read<int>('mastered') == 1,
       reviewCount: row.read<int>('review_count'),
+      nextReviewAt: nextReview != null
+          ? DateTime.fromMillisecondsSinceEpoch(nextReview)
+          : null,
     );
   }
 

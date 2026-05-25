@@ -19,6 +19,7 @@ import '../widgets/comparison_result_sheet.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/responsive_page.dart';
 import 'analysis_page.dart';
+import 'listening_page.dart';
 import 'shadowing_page.dart';
 
 class DictationPage extends StatefulWidget {
@@ -97,6 +98,19 @@ class _DictationPageState extends State<DictationPage> {
             tooltip: _focusMode ? '退出专注模式' : '专注模式（隐藏提示）',
             onPressed: () => setState(() => _focusMode = !_focusMode),
           ),
+          // Listening mode
+          if (_project != null)
+            IconButton(
+              icon: const Icon(Icons.headphones),
+              tooltip: '泛听模式',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => ListeningPage(projectId: widget.projectId),
+                  ),
+                );
+              },
+            ),
           // Shadowing mode
           if (_project != null)
             IconButton(
@@ -492,6 +506,21 @@ class _DictationPageState extends State<DictationPage> {
                       fontWeight: FontWeight.w600,
                       color: theme.colorScheme.onSurfaceVariant,
                     )),
+              ),
+              // Bookmark sentence
+              IconButton(
+                icon: Icon(
+                  s.bookmarked ? Icons.bookmark : Icons.bookmark_border,
+                  size: 18,
+                  color: s.bookmarked ? AppTheme.gold : null,
+                ),
+                tooltip: s.bookmarked ? '取消收藏' : '收藏到金句本',
+                onPressed: () async {
+                  final db = context.read<AppState>().database;
+                  await db.toggleBookmark(s.id, !s.bookmarked);
+                  // Reload to reflect bookmark state
+                  _load();
+                },
               ),
               // Toggle full text
               IconButton(
