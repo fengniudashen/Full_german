@@ -4,10 +4,14 @@ import 'package:provider/provider.dart';
 
 import '../models/study_project.dart';
 import '../providers/app_state.dart';
+import '../theme/app_theme.dart';
+import '../widgets/accuracy_ring.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/glass_card.dart';
 import '../widgets/metric_pill.dart';
-import '../widgets/surface_panel.dart';
+import '../widgets/status_badge.dart';
 import 'dictation_page.dart';
+import 'new_project_page.dart';
 import 'timeline_page.dart';
 
 class ProjectsPage extends StatelessWidget {
@@ -18,10 +22,17 @@ class ProjectsPage extends StatelessWidget {
     return Consumer<AppState>(
       builder: (context, appState, _) {
         if (appState.projects.isEmpty) {
-          return const EmptyState(
+          return EmptyState(
             icon: Icons.library_music_outlined,
             title: '还没有学习项目',
-            message: '点击右下角新建项目，导入 MP3 和德语原文后开始标注。',
+            message: '点击新建项目，导入 MP3 和德语原文后开始标注与听写练习。',
+            action: FilledButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const NewProjectPage()),
+              ),
+              icon: const Icon(Icons.add),
+              label: const Text('新建项目'),
+            ),
           );
         }
 
@@ -30,11 +41,8 @@ class ProjectsPage extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final width = constraints.maxWidth;
-              final crossAxisCount = width >= 1200
-                  ? 3
-                  : width >= 760
-                      ? 2
-                      : 1;
+              final crossAxisCount =
+                  width >= 1200 ? 3 : width >= 760 ? 2 : 1;
 
               return CustomScrollView(
                 slivers: [
@@ -51,12 +59,13 @@ class ProjectsPage extends StatelessWidget {
                         crossAxisCount: crossAxisCount,
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
-                        childAspectRatio: crossAxisCount == 1 ? 3.6 : 2.1,
+                        childAspectRatio: crossAxisCount == 1 ? 2.8 : 1.6,
                       ),
                       itemCount: appState.projects.length,
                       itemBuilder: (context, index) {
-                        final project = appState.projects[index];
-                        return _ProjectCard(project: project);
+                        return _ProjectCard(
+                          project: appState.projects[index],
+                        );
                       },
                     ),
                   ),
@@ -72,16 +81,16 @@ class ProjectsPage extends StatelessWidget {
 
 class _ProjectOverview extends StatelessWidget {
   const _ProjectOverview({required this.projects});
-
   final List<StudyProject> projects;
 
   @override
   Widget build(BuildContext context) {
-    final annotated = projects.where((project) => project.timelineCompleted).length;
-    final sentenceCount = projects.fold<int>(0, (sum, project) => sum + project.sentenceCount);
-    final pending = projects.length - annotated;
+    final annotated =
+        projects.where((p) => p.timelineCompleted).length;
+    final totalSentences =
+        projects.fold<int>(0, (s, p) => s + p.sentenceCount);
 
-    return SurfacePanel(
+    return GlassCard(
       padding: const EdgeInsets.all(14),
       child: Wrap(
         spacing: 10,
@@ -96,19 +105,19 @@ class _ProjectOverview extends StatelessWidget {
             icon: Icons.task_alt,
             label: '可听写',
             value: '$annotated',
-            color: Colors.green.shade700,
+            color: AppTheme.emerald,
           ),
           MetricPill(
             icon: Icons.pending_actions_outlined,
             label: '待标注',
-            value: '$pending',
-            color: Theme.of(context).colorScheme.secondary,
+            value: '${projects.length - annotated}',
+            color: AppTheme.accent,
           ),
           MetricPill(
             icon: Icons.segment_outlined,
             label: '句子总数',
-            value: '$sentenceCount',
-            color: Theme.of(context).colorScheme.tertiary,
+            value: '$totalSentences',
+            color: AppTheme.gold,
           ),
         ],
       ),
@@ -118,122 +127,172 @@ class _ProjectOverview extends StatelessWidget {
 
 class _ProjectCard extends StatelessWidget {
   const _ProjectCard({required this.project});
-
   final StudyProject project;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dateFormat = DateFormat('yyyy-MM-dd HH:mm');
-    final progressText = '${project.annotatedCount}/${project.sentenceCount} 句已标注';
 
-    final statusColor = project.timelineCompleted ? Colors.green.shade700 : theme.colorScheme.secondary;
-    final progress = project.sentenceCount == 0 ? 0.0 : project.annotatedCount / project.sentenceCount;
-
-    return SurfacePanel(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: () => _openProject(context),
-        onLongPress: () => _confirmDelete(context),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return GlassCard(
+      onTap: () => _openProject(context),
+      onLongPress: () => _confirmDelete(context),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Title + status
+          Row(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      project.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+              Expanded(
+                child: Text(
+                  project.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
                   ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: statusColor.withValues(alpha: 0.25)),
-                    ),
-                    child: Text(
-                      project.timelineCompleted ? '可听写' : '待标注',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: statusColor,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                dateFormat.format(project.createdAt),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-              const Spacer(),
-              LinearProgressIndicator(value: progress),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(Icons.timer_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
-                  const SizedBox(width: 5),
-                  Expanded(child: Text(progressText, style: theme.textTheme.bodySmall)),
-                  Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
-                ],
-              ),
+              const SizedBox(width: 8),
+              StatusBadge.fromStatus(project.statusLabel),
             ],
           ),
-        ),
+          const SizedBox(height: 6),
+          Text(
+            dateFormat.format(project.createdAt),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+
+          const Spacer(),
+
+          // Progress bars
+          _ProgressRow(
+            label: '标注',
+            value: project.annotationProgress,
+            text: '${project.annotatedCount}/${project.sentenceCount}',
+            color: AppTheme.emerald,
+          ),
+          const SizedBox(height: 6),
+          _ProgressRow(
+            label: '听写',
+            value: project.dictationProgress,
+            text: '${project.dictatedCount}/${project.sentenceCount}',
+            color: AppTheme.sky,
+          ),
+
+          const SizedBox(height: 10),
+
+          // Bottom stats
+          Row(
+            children: [
+              if (project.dictatedCount > 0) ...[
+                AccuracyRing(
+                  value: project.accuracy,
+                  size: 28,
+                  strokeWidth: 3,
+                ),
+                const SizedBox(width: 8),
+              ],
+              if (project.wrongWordCount > 0) ...[
+                Icon(Icons.error_outline,
+                    size: 14, color: AppTheme.accent),
+                const SizedBox(width: 3),
+                Text('${project.wrongWordCount} 错词',
+                    style: theme.textTheme.labelSmall),
+                const SizedBox(width: 8),
+              ],
+              const Spacer(),
+              Icon(Icons.chevron_right,
+                  color: theme.colorScheme.onSurfaceVariant),
+            ],
+          ),
+        ],
       ),
     );
   }
 
   void _openProject(BuildContext context) {
-    final destination = project.timelineCompleted
+    final page = project.timelineCompleted
         ? DictationPage(projectId: project.id)
         : TimelinePage(projectId: project.id);
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => destination));
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => page));
   }
 
   Future<void> _confirmDelete(BuildContext context) async {
-    final shouldDelete = await showDialog<bool>(
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('删除项目'),
-          content: Text('确定删除“${project.name}”及其句子、错词记录吗？'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除项目'),
+        content: Text('确定删除"${project.name}"及其所有数据吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
             ),
-            FilledButton.tonalIcon(
-              onPressed: () => Navigator.of(context).pop(true),
-              icon: const Icon(Icons.delete_outline),
-              label: const Text('删除'),
-            ),
-          ],
-        );
-      },
+            child: const Text('删除'),
+          ),
+        ],
+      ),
     );
-
-    if (shouldDelete != true || !context.mounted) {
-      return;
-    }
-
+    if (confirmed != true || !context.mounted) return;
     await context.read<AppState>().deleteProject(project);
-    if (!context.mounted) {
-      return;
-    }
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('已删除 ${project.name}')),
+    );
+  }
+}
+
+class _ProgressRow extends StatelessWidget {
+  const _ProgressRow({
+    required this.label,
+    required this.value,
+    required this.text,
+    required this.color,
+  });
+
+  final String label;
+  final double value;
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        SizedBox(
+          width: 32,
+          child: Text(label,
+              style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant)),
+        ),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: LinearProgressIndicator(
+              value: value.clamp(0.0, 1.0),
+              minHeight: 6,
+              backgroundColor:
+                  theme.colorScheme.surfaceContainerHighest,
+              valueColor: AlwaysStoppedAnimation(color),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(text,
+            style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.w700)),
+      ],
     );
   }
 }

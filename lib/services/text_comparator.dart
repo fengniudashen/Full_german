@@ -4,91 +4,74 @@ enum _TraceStep { substitute, deleteOriginal, insertTyped }
 
 class TextComparator {
   static ComparisonResult compare(String original, String typed) {
-    final originalTokens = _tokenize(original);
+    final origTokens = _tokenize(original);
     final typedTokens = _tokenize(typed);
-    final rowCount = originalTokens.length + 1;
-    final columnCount = typedTokens.length + 1;
+    final rows = origTokens.length + 1;
+    final cols = typedTokens.length + 1;
 
-    final scores = List.generate(
-      rowCount,
-      (_) => List<double>.filled(columnCount, 0),
-    );
-    final trace = List.generate(
-      rowCount,
-      (_) => List<_TraceStep?>.filled(columnCount, null),
-    );
+    final scores = List.generate(rows, (_) => List<double>.filled(cols, 0));
+    final trace = List.generate(rows, (_) => List<_TraceStep?>.filled(cols, null));
 
-    for (var row = 1; row < rowCount; row++) {
-      scores[row][0] = row.toDouble();
-      trace[row][0] = _TraceStep.deleteOriginal;
+    for (var r = 1; r < rows; r++) {
+      scores[r][0] = r.toDouble();
+      trace[r][0] = _TraceStep.deleteOriginal;
     }
-    for (var column = 1; column < columnCount; column++) {
-      scores[0][column] = column.toDouble();
-      trace[0][column] = _TraceStep.insertTyped;
+    for (var c = 1; c < cols; c++) {
+      scores[0][c] = c.toDouble();
+      trace[0][c] = _TraceStep.insertTyped;
     }
 
-    for (var row = 1; row < rowCount; row++) {
-      for (var column = 1; column < columnCount; column++) {
-        final substitutionCost = _substitutionCost(
-          originalTokens[row - 1],
-          typedTokens[column - 1],
-        );
-        var bestScore = scores[row - 1][column - 1] + substitutionCost;
+    for (var r = 1; r < rows; r++) {
+      for (var c = 1; c < cols; c++) {
+        final subCost = _substitutionCost(origTokens[r - 1], typedTokens[c - 1]);
+        var bestScore = scores[r - 1][c - 1] + subCost;
         var bestStep = _TraceStep.substitute;
 
-        final deleteScore = scores[row - 1][column] + 1;
-        if (deleteScore < bestScore) {
-          bestScore = deleteScore;
+        final delScore = scores[r - 1][c] + 1;
+        if (delScore < bestScore) {
+          bestScore = delScore;
           bestStep = _TraceStep.deleteOriginal;
         }
 
-        final insertScore = scores[row][column - 1] + 1;
-        if (insertScore < bestScore) {
-          bestScore = insertScore;
+        final insScore = scores[r][c - 1] + 1;
+        if (insScore < bestScore) {
+          bestScore = insScore;
           bestStep = _TraceStep.insertTyped;
         }
 
-        scores[row][column] = bestScore;
-        trace[row][column] = bestStep;
+        scores[r][c] = bestScore;
+        trace[r][c] = bestStep;
       }
     }
 
-    var row = originalTokens.length;
-    var column = typedTokens.length;
+    var r = origTokens.length;
+    var c = typedTokens.length;
     final items = <WordComparison>[];
 
-    while (row > 0 || column > 0) {
-      final step = trace[row][column];
+    while (r > 0 || c > 0) {
+      final step = trace[r][c];
       if (step == _TraceStep.substitute) {
-        final originalToken = originalTokens[row - 1];
-        final typedToken = typedTokens[column - 1];
-        items.add(
-          WordComparison(
-            original: originalToken,
-            typed: typedToken,
-            status: _statusFor(originalToken, typedToken),
-          ),
-        );
-        row--;
-        column--;
+        items.add(WordComparison(
+          original: origTokens[r - 1],
+          typed: typedTokens[c - 1],
+          status: _statusFor(origTokens[r - 1], typedTokens[c - 1]),
+        ));
+        r--;
+        c--;
       } else if (step == _TraceStep.deleteOriginal) {
-        items.add(
-          WordComparison(
-            original: originalTokens[row - 1],
-            typed: '',
-            status: ComparisonStatus.wrong,
-          ),
-        );
-        row--;
+        items.add(WordComparison(
+          original: origTokens[r - 1],
+          typed: '',
+          status: ComparisonStatus.wrong,
+        ));
+        r--;
       } else {
-        items.add(
-          WordComparison(
-            original: '',
-            typed: typedTokens[column - 1],
-            status: ComparisonStatus.wrong,
-          ),
-        );
-        column--;
+        items.add(WordComparison(
+          original: '',
+          typed: typedTokens[c - 1],
+          status: ComparisonStatus.wrong,
+        ));
+        c--;
       }
     }
 
@@ -102,41 +85,25 @@ class TextComparator {
   static List<String> _tokenize(String value) {
     return RegExp(r'\S+')
         .allMatches(value.trim())
-        .map((match) => match.group(0)!.trim())
-        .where((token) => token.isNotEmpty)
+        .map((m) => m.group(0)!.trim())
+        .where((t) => t.isNotEmpty)
         .toList(growable: false);
   }
 
-  static double _substitutionCost(String original, String typed) {
-    final status = _statusFor(original, typed);
-    return switch (status) {
+  static double _substitutionCost(String a, String b) {
+    return switch (_statusFor(a, b)) {
       ComparisonStatus.correct => 0,
       ComparisonStatus.minor => 0.25,
       ComparisonStatus.wrong => 1,
     };
   }
 
-  static ComparisonStatus _statusFor(String original, String typed) {
-    if (original == typed) {
-      return ComparisonStatus.correct;
-    }
+  static ComparisonStatus _statusFor(String a, String b) {
+    if (a == b) return ComparisonStatus.correct;
 
-    final originalMinor = _canonical(
-      original,
-      foldCase: true,
-      stripPunctuation: true,
-      foldEszett: true,
-    );
-    final typedMinor = _canonical(
-      typed,
-      foldCase: true,
-      stripPunctuation: true,
-      foldEszett: true,
-    );
-
-    if (originalMinor.isNotEmpty && originalMinor == typedMinor) {
-      return ComparisonStatus.minor;
-    }
+    final ca = _canonical(a, foldCase: true, stripPunctuation: true, foldEszett: true);
+    final cb = _canonical(b, foldCase: true, stripPunctuation: true, foldEszett: true);
+    if (ca.isNotEmpty && ca == cb) return ComparisonStatus.minor;
 
     return ComparisonStatus.wrong;
   }
@@ -147,20 +114,16 @@ class TextComparator {
     bool stripPunctuation = false,
     bool foldEszett = false,
   }) {
-    var value = token.trim();
+    var v = token.trim();
     if (stripPunctuation) {
-      value = value.split('').where(_isLetterOrNumber).join();
+      v = v.split('').where(_isLetterOrNumber).join();
     }
-    if (foldCase) {
-      value = value.toLowerCase();
-    }
-    if (foldEszett) {
-      value = value.replaceAll('ß', 'ss');
-    }
-    return value;
+    if (foldCase) v = v.toLowerCase();
+    if (foldEszett) v = v.replaceAll('ß', 'ss');
+    return v;
   }
 
-  static bool _isLetterOrNumber(String char) {
-    return RegExp(r'[A-Za-z0-9ÄÖÜäöüß]').hasMatch(char);
+  static bool _isLetterOrNumber(String ch) {
+    return RegExp(r'[A-Za-z0-9ÄÖÜäöüß]').hasMatch(ch);
   }
 }

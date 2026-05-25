@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 class SurfacePanel extends StatelessWidget {
   const SurfacePanel({
@@ -17,23 +18,14 @@ class SurfacePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: Colors.transparent,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: color ?? scheme.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: borderColor ?? scheme.outlineVariant),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.035),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Padding(padding: padding, child: child),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color ?? scheme.surfaceContainerLowest,
+        borderRadius: AppTheme.borderMd,
+        border: Border.all(color: borderColor ?? scheme.outlineVariant),
+        boxShadow: AppTheme.shadowSm(Theme.of(context).brightness),
       ),
+      child: Padding(padding: padding, child: child),
     );
   }
 }

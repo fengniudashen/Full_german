@@ -9,13 +9,13 @@ import 'package:provider/provider.dart';
 import '../models/study_project.dart';
 import '../models/study_sentence.dart';
 import '../providers/app_state.dart';
+import '../theme/app_theme.dart';
 import '../utils/time_format.dart';
-import '../widgets/surface_panel.dart';
+import '../widgets/glass_card.dart';
 import 'dictation_page.dart';
 
 class TimelinePage extends StatefulWidget {
   const TimelinePage({super.key, required this.projectId});
-
   final int projectId;
 
   @override
@@ -24,8 +24,8 @@ class TimelinePage extends StatefulWidget {
 
 class _TimelinePageState extends State<TimelinePage> {
   final AudioPlayer _player = AudioPlayer();
-  StreamSubscription<Duration>? _positionSubscription;
-  StreamSubscription<PlayerState>? _playerStateSubscription;
+  StreamSubscription<Duration>? _posSub;
+  StreamSubscription<PlayerState>? _stateSub;
 
   StudyProject? _project;
   List<StudySentence> _sentences = const [];
@@ -40,47 +40,45 @@ class _TimelinePageState extends State<TimelinePage> {
   @override
   void initState() {
     super.initState();
-    _positionSubscription = _player.positionStream.listen((position) {
-      if (mounted) {
-        setState(() => _position = position);
-      }
+    _posSub = _player.positionStream.listen((p) {
+      if (mounted) setState(() => _position = p);
     });
-    _playerStateSubscription = _player.playerStateStream.listen((state) {
-      if (mounted) {
-        setState(() => _isPlaying = state.playing);
-      }
+    _stateSub = _player.playerStateStream.listen((s) {
+      if (mounted) setState(() => _isPlaying = s.playing);
     });
     _load();
   }
 
   @override
   void dispose() {
-    _positionSubscription?.cancel();
-    _playerStateSubscription?.cancel();
+    _posSub?.cancel();
+    _stateSub?.cancel();
     _player.dispose();
     super.dispose();
   }
 
   bool get _allComplete =>
-      _sentences.isNotEmpty && _sentences.every((sentence) => sentence.endMs > 0);
+      _sentences.isNotEmpty && _sentences.every((s) => s.endMs > 0);
 
-    StudySentence? get _selectedSentence =>
-      _sentences.isEmpty ? null : _sentences[_clampIndex(_selectedIndex)];
+  StudySentence? get _sel =>
+      _sentences.isEmpty ? null : _sentences[_clamp(_selectedIndex)];
 
   @override
   Widget build(BuildContext context) {
-    final project = _project;
-
     return Scaffold(
       appBar: AppBar(
-        title: Text(project?.name ?? '时间轴标注'),
+        title: Text(_project?.name ?? '时间轴标注'),
         actions: [
           if (_allComplete)
-            TextButton.icon(
+            FilledButton.icon(
               onPressed: _finishAnnotation,
-              icon: const Icon(Icons.task_alt),
+              icon: const Icon(Icons.task_alt, size: 18),
               label: const Text('完成标注'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.emerald,
+              ),
             ),
+          const SizedBox(width: 8),
         ],
       ),
       body: _buildBody(context),
@@ -88,9 +86,7 @@ class _TimelinePageState extends State<TimelinePage> {
   }
 
   Widget _buildBody(BuildContext context) {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) {
       return Center(
         child: Padding(
@@ -114,7 +110,7 @@ class _TimelinePageState extends State<TimelinePage> {
                   duration: _duration,
                 ),
                 const SizedBox(height: 12),
-                _buildControls(context),
+                _buildControls(),
                 const SizedBox(height: 12),
                 Expanded(child: _buildSentenceList()),
               ],
@@ -125,85 +121,181 @@ class _TimelinePageState extends State<TimelinePage> {
     );
   }
 
-  Widget _buildControls(BuildContext context) {
-    final selected = _selectedSentence;
-    return SurfacePanel(
-      padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 8,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                IconButton.filledTonal(
-                  onPressed: () => _seekBy(const Duration(seconds: -2)),
-                  icon: const Icon(Icons.replay_5),
-                  tooltip: '快退 2 秒',
-                ),
-                IconButton.filled(
-                  onPressed: _togglePlay,
-                  icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
-                  tooltip: _isPlaying ? '暂停' : '播放',
-                ),
-                IconButton.filledTonal(
-                  onPressed: () => _seekBy(const Duration(seconds: 2)),
-                  icon: const Icon(Icons.forward_5),
-                  tooltip: '快进 2 秒',
-                ),
-                const SizedBox(width: 8),
-                FilledButton.tonalIcon(
-                  onPressed: selected == null ? null : _markStart,
-                  icon: const Icon(Icons.flag_outlined),
-                  label: const Text('标记起始点 A'),
-                ),
-                FilledButton.tonalIcon(
-                  onPressed: selected == null ? null : _markEnd,
-                  icon: const Icon(Icons.outlined_flag),
-                  label: const Text('标记结束点 B'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Center(
-              child: Text(
-                '${formatDurationMs(_position.inMilliseconds)} / ${formatDurationMs(_duration.inMilliseconds)}',
+  Widget _buildControls() {
+    final sel = _sel;
+    final theme = Theme.of(context);
+    return GlassCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        children: [
+          // Transport controls
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton.filledTonal(
+                onPressed: () => _seekBy(const Duration(seconds: -5)),
+                icon: const Icon(Icons.replay_5),
+                tooltip: '快退 5 秒',
               ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                onPressed: () => _seekBy(const Duration(seconds: -2)),
+                icon: const Icon(Icons.fast_rewind),
+                tooltip: '快退 2 秒',
+              ),
+              const SizedBox(width: 12),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: AppTheme.heroGradient,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  onPressed: _togglePlay,
+                  icon: Icon(
+                    _isPlaying ? Icons.pause : Icons.play_arrow,
+                    color: Colors.white,
+                  ),
+                  iconSize: 32,
+                ),
+              ),
+              const SizedBox(width: 12),
+              IconButton.filledTonal(
+                onPressed: () => _seekBy(const Duration(seconds: 2)),
+                icon: const Icon(Icons.fast_forward),
+                tooltip: '快进 2 秒',
+              ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                onPressed: () => _seekBy(const Duration(seconds: 5)),
+                icon: const Icon(Icons.forward_5),
+                tooltip: '快进 5 秒',
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Progress slider
+          SliderTheme(
+            data: SliderThemeData(
+              trackHeight: 4,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+              activeTrackColor: theme.colorScheme.primary,
+              inactiveTrackColor: theme.colorScheme.surfaceContainerHighest,
+              thumbColor: theme.colorScheme.primary,
+              overlayColor: theme.colorScheme.primary.withValues(alpha: 0.12),
             ),
-          ],
+            child: Slider(
+              value: _duration == Duration.zero
+                  ? 0
+                  : (_position.inMilliseconds / _duration.inMilliseconds)
+                      .clamp(0.0, 1.0),
+              onChanged: (v) {
+                final ms = (v * _duration.inMilliseconds).round();
+                _player.seek(Duration(milliseconds: ms));
+              },
+            ),
+          ),
+
+          // Time display
+          Text(
+            '${formatDurationMs(_position.inMilliseconds)} / ${formatDurationMs(_duration.inMilliseconds)}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontFeatures: [const FontFeature.tabularFigures()],
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // A/B markers
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: [
+              FilledButton.icon(
+                onPressed: sel == null ? null : _markStart,
+                icon: const Icon(Icons.flag, size: 16),
+                label: const Text('标记 A 起始'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTheme.emerald,
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: sel == null ? null : _markEnd,
+                icon: const Icon(Icons.outlined_flag, size: 16),
+                label: const Text('标记 B 结束'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTheme.accent,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildSentenceList() {
-    return SurfacePanel(
+    final theme = Theme.of(context);
+    return GlassCard(
       padding: EdgeInsets.zero,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: 8),
         itemCount: _sentences.length,
-        separatorBuilder: (_, __) => const Divider(height: 1),
-        itemBuilder: (context, index) {
-          final sentence = _sentences[index];
-          final selected = index == _selectedIndex;
+        separatorBuilder: (_, __) => Divider(
+          height: 1,
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+        itemBuilder: (context, i) {
+          final s = _sentences[i];
+          final selected = i == _selectedIndex;
           return ListTile(
             selected: selected,
-            selectedTileColor: Theme.of(context)
-              .colorScheme
-              .primaryContainer
-              .withValues(alpha: 0.35),
-            leading: CircleAvatar(child: Text('${index + 1}')),
-            title: Text(sentence.text),
-            subtitle: Text(
-              'A ${formatDurationMs(sentence.startMs)}   B ${formatDurationMs(sentence.endMs)}',
+            selectedTileColor:
+                theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
+            leading: Container(
+              width: 32,
+              height: 32,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: s.hasEndTime
+                    ? AppTheme.emerald.withValues(alpha: 0.15)
+                    : theme.colorScheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(99),
+              ),
+              child: Text(
+                '${i + 1}',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                  color: s.hasEndTime
+                      ? AppTheme.emerald
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
             ),
-            trailing: sentence.hasEndTime
-                ? const Icon(Icons.check_circle, color: Colors.green)
-                : const Icon(Icons.radio_button_unchecked),
+            title: Text(s.text, maxLines: 2, overflow: TextOverflow.ellipsis),
+            subtitle: Text(
+              'A ${formatDurationMs(s.startMs)}   B ${formatDurationMs(s.endMs)}',
+              style: TextStyle(
+                fontFeatures: [const FontFeature.tabularFigures()],
+                fontSize: 12,
+              ),
+            ),
+            trailing: s.hasEndTime
+                ? const Icon(Icons.check_circle, color: AppTheme.emerald, size: 20)
+                : Icon(Icons.radio_button_unchecked,
+                    size: 20, color: theme.colorScheme.outlineVariant),
             onTap: () async {
-              setState(() => _selectedIndex = index);
-              await _player.seek(Duration(milliseconds: sentence.startMs));
+              setState(() => _selectedIndex = i);
+              await _player.seek(Duration(milliseconds: s.startMs));
             },
           );
         },
@@ -213,8 +305,8 @@ class _TimelinePageState extends State<TimelinePage> {
 
   Future<void> _load() async {
     try {
-      final database = context.read<AppState>().database;
-      final project = await database.getProject(widget.projectId);
+      final db = context.read<AppState>().database;
+      final project = await db.getProject(widget.projectId);
       if (project == null) {
         setState(() {
           _loading = false;
@@ -222,30 +314,28 @@ class _TimelinePageState extends State<TimelinePage> {
         });
         return;
       }
-
-      final sentences = await database.getSentencesForProject(widget.projectId);
-      Duration? duration;
+      final sentences = await db.getSentencesForProject(widget.projectId);
+      Duration? dur;
       try {
-        duration = await _player.setFilePath(project.audioPath);
-      } catch (error) {
+        dur = await _player.setFilePath(project.audioPath);
+      } catch (e) {
         setState(() {
           _loading = false;
-          _error = '音频加载失败：$error';
+          _error = '音频加载失败：$e';
         });
         return;
       }
-
       setState(() {
         _project = project;
         _sentences = sentences;
-        _duration = duration ?? Duration.zero;
+        _duration = dur ?? Duration.zero;
         _samples = _buildSamples(720);
         _loading = false;
       });
-    } catch (error) {
+    } catch (e) {
       setState(() {
         _loading = false;
-        _error = '加载失败：$error';
+        _error = '加载失败：$e';
       });
     }
   }
@@ -255,66 +345,56 @@ class _TimelinePageState extends State<TimelinePage> {
         .read<AppState>()
         .database
         .getSentencesForProject(widget.projectId);
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
     setState(() {
       _sentences = sentences;
       if (selectedIndex != null && sentences.isNotEmpty) {
-        _selectedIndex = _clampIndex(selectedIndex);
+        _selectedIndex = _clamp(selectedIndex);
       }
     });
   }
 
   Future<void> _togglePlay() async {
-    if (_isPlaying) {
-      await _player.pause();
-    } else {
-      await _player.play();
-    }
+    _isPlaying ? await _player.pause() : await _player.play();
   }
 
   Future<void> _seekBy(Duration offset) async {
-    final target = _position + offset;
-    final clamped = _clampDuration(target, Duration.zero, _duration);
-    await _player.seek(clamped);
+    var target = _position + offset;
+    if (target < Duration.zero) target = Duration.zero;
+    if (_duration > Duration.zero && target > _duration) target = _duration;
+    await _player.seek(target);
   }
 
   Future<void> _markStart() async {
-    final sentence = _selectedSentence;
-    if (sentence == null) {
-      return;
-    }
-    await context.read<AppState>().database.updateSentenceTimes(
-          sentence.id,
-          startMs: _position.inMilliseconds,
-        );
+    final s = _sel;
+    if (s == null) return;
+    await context
+        .read<AppState>()
+        .database
+        .updateSentenceTimes(s.id, startMs: _position.inMilliseconds);
     await _reloadSentences(selectedIndex: _selectedIndex);
   }
 
   Future<void> _markEnd() async {
-    final sentence = _selectedSentence;
-    if (sentence == null) {
-      return;
-    }
+    final s = _sel;
+    if (s == null) return;
     final endMs = _position.inMilliseconds;
-    if (endMs <= sentence.startMs) {
+    if (endMs <= s.startMs) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('结束点必须晚于起始点')),
       );
       return;
     }
+    final db = context.read<AppState>().database;
+    await db.updateSentenceTimes(s.id, endMs: endMs);
 
-    final database = context.read<AppState>().database;
-    await database.updateSentenceTimes(sentence.id, endMs: endMs);
-
-    final nextIndex = _selectedIndex + 1;
-    if (nextIndex < _sentences.length) {
-      final nextSentence = _sentences[nextIndex];
-      if (nextSentence.startMs == 0) {
-        await database.updateSentenceTimes(nextSentence.id, startMs: endMs);
+    final next = _selectedIndex + 1;
+    if (next < _sentences.length) {
+      final ns = _sentences[next];
+      if (ns.startMs == 0) {
+        await db.updateSentenceTimes(ns.id, startMs: endMs);
       }
-      await _reloadSentences(selectedIndex: nextIndex);
+      await _reloadSentences(selectedIndex: next);
       await _player.seek(Duration(milliseconds: endMs));
     } else {
       await _reloadSentences(selectedIndex: _selectedIndex);
@@ -323,37 +403,24 @@ class _TimelinePageState extends State<TimelinePage> {
 
   Future<void> _finishAnnotation() async {
     await context.read<AppState>().markTimelineCompleted(widget.projectId);
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => DictationPage(projectId: widget.projectId)),
+      MaterialPageRoute<void>(
+        builder: (_) => DictationPage(projectId: widget.projectId),
+      ),
     );
   }
 
-  Duration _clampDuration(Duration value, Duration min, Duration max) {
-    if (value < min) {
-      return min;
-    }
-    if (max > Duration.zero && value > max) {
-      return max;
-    }
-    return value;
-  }
-
-  int _clampIndex(int value) {
-    if (_sentences.isEmpty) {
-      return 0;
-    }
-    return value.clamp(0, _sentences.length - 1).toInt();
+  int _clamp(int v) {
+    if (_sentences.isEmpty) return 0;
+    return v.clamp(0, _sentences.length - 1).toInt();
   }
 
   List<double> _buildSamples(int count) {
-    return List<double>.generate(count, (index) {
-      final primary = (math.sin(index * 0.19) + 1) / 2;
-      final secondary = (math.sin(index * 0.047 + 1.2) + 1) / 2;
-      final value = 0.12 + (primary * 0.58) + (secondary * 0.25);
-      return value.clamp(0.06, 1).toDouble();
+    return List<double>.generate(count, (i) {
+      final a = (math.sin(i * 0.19) + 1) / 2;
+      final b = (math.sin(i * 0.047 + 1.2) + 1) / 2;
+      return (0.12 + a * 0.58 + b * 0.25).clamp(0.06, 1.0).toDouble();
     }, growable: false);
   }
 }
@@ -364,30 +431,30 @@ class _WaveformCard extends StatelessWidget {
     required this.position,
     required this.duration,
   });
-
   final List<double> samples;
   final Duration position;
   final Duration duration;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final safeDuration = duration == Duration.zero ? const Duration(seconds: 1) : duration;
-    return SurfacePanel(
+    final scheme = Theme.of(context).colorScheme;
+    final safeDur =
+        duration == Duration.zero ? const Duration(seconds: 1) : duration;
+    return GlassCard(
       padding: const EdgeInsets.all(16),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return RectangleWaveform(
-              samples: samples,
-              height: 128,
-              width: constraints.maxWidth,
-              maxDuration: safeDuration,
-              elapsedDuration: position > safeDuration ? safeDuration : position,
-              activeColor: colorScheme.primary,
-              inactiveColor: colorScheme.outlineVariant,
-              showActiveWaveform: true,
-            );
-          },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return RectangleWaveform(
+            samples: samples,
+            height: 100,
+            width: constraints.maxWidth,
+            maxDuration: safeDur,
+            elapsedDuration: position > safeDur ? safeDur : position,
+            activeColor: scheme.primary,
+            inactiveColor: scheme.outlineVariant,
+            showActiveWaveform: true,
+          );
+        },
       ),
     );
   }

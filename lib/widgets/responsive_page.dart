@@ -24,11 +24,6 @@ class ResponsivePage extends StatelessWidget {
         ),
       ),
     );
-
-    if (!scrollable) {
-      return content;
-    }
-
-    return SingleChildScrollView(child: content);
+    return scrollable ? SingleChildScrollView(child: content) : content;
   }
 }

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../models/study_sentence.dart';
 import '../models/word_comparison.dart';
 import '../services/dictionary_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/accuracy_ring.dart';
 
 class ComparisonResultSheet extends StatefulWidget {
   const ComparisonResultSheet({
@@ -21,80 +23,117 @@ class ComparisonResultSheet extends StatefulWidget {
 }
 
 class _ComparisonResultSheetState extends State<ComparisonResultSheet> {
-  final DictionaryService _dictionaryService = DictionaryService();
-  late final TextEditingController _noteController;
+  final DictionaryService _dict = DictionaryService();
+  late final TextEditingController _noteCtrl;
   bool _savingNote = false;
 
   @override
   void initState() {
     super.initState();
-    _noteController = TextEditingController(text: widget.sentence.note);
+    _noteCtrl = TextEditingController(text: widget.sentence.note);
   }
 
   @override
   void dispose() {
-    _dictionaryService.dispose();
-    _noteController.dispose();
+    _dict.dispose();
+    _noteCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return DraggableScrollableSheet(
       expand: false,
-      initialChildSize: 0.82,
+      initialChildSize: 0.85,
       minChildSize: 0.45,
       maxChildSize: 0.95,
       builder: (context, controller) {
-        return Material(
-          color: theme.colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        return Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(AppTheme.radiusXl)),
+          ),
           child: ListView(
             controller: controller,
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
             children: [
               Center(
                 child: Container(
-                  width: 42,
+                  width: 40,
                   height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.outlineVariant,
                     borderRadius: BorderRadius.circular(99),
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
-              Text('校对与精析', style: theme.textTheme.titleLarge),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+
+              // ── Header with accuracy ring ──
+              Row(
                 children: [
-                  _SummaryChip(
-                    label: '正确 ${widget.result.correctCount}',
-                    color: Colors.green,
-                  ),
-                  _SummaryChip(
-                    label: '轻微 ${widget.result.minorCount}',
-                    color: Colors.amber,
-                  ),
-                  _SummaryChip(
-                    label: '错误 ${widget.result.wrongCount}',
-                    color: Colors.red,
+                  AccuracyRing(value: widget.result.accuracy, size: 64),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('校对与精析',
+                            style: theme.textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w900)),
+                        const SizedBox(height: 4),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          children: [
+                            _StatChip('正确 ${widget.result.correctCount}',
+                                isDark ? AppTheme.correctFgDark : AppTheme.correctFg,
+                                isDark ? AppTheme.correctBgDark : AppTheme.correctBg),
+                            _StatChip('轻微 ${widget.result.minorCount}',
+                                isDark ? AppTheme.minorFgDark : AppTheme.minorFg,
+                                isDark ? AppTheme.minorBgDark : AppTheme.minorBg),
+                            _StatChip('错误 ${widget.result.wrongCount}',
+                                isDark ? AppTheme.wrongFgDark : AppTheme.wrongFg,
+                                isDark ? AppTheme.wrongBgDark : AppTheme.wrongBg),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
-              Text('原文', style: theme.textTheme.titleMedium),
+
+              const SizedBox(height: 24),
+
+              // ── Original text ──
+              _SectionTitle('原文', Icons.text_snippet_outlined),
               const SizedBox(height: 8),
-              Text(widget.sentence.text),
-              const SizedBox(height: 18),
-              Text('逐词对比', style: theme.textTheme.titleMedium),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerLow,
+                  borderRadius: AppTheme.borderMd,
+                  border: Border.all(color: theme.colorScheme.outlineVariant),
+                ),
+                child: SelectableText(
+                  widget.sentence.text,
+                  style: theme.textTheme.bodyLarge?.copyWith(height: 1.6),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // ── Word-by-word comparison ──
+              _SectionTitle('逐词对比', Icons.compare_arrows),
               const SizedBox(height: 10),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: 6,
+                runSpacing: 6,
                 children: widget.result.items
                     .map((item) => _ComparisonToken(
                           item: item,
@@ -104,11 +143,14 @@ class _ComparisonResultSheetState extends State<ComparisonResultSheet> {
                         ))
                     .toList(growable: false),
               ),
-              const SizedBox(height: 24),
-              Text('语法笔记', style: theme.textTheme.titleMedium),
+
+              const SizedBox(height: 28),
+
+              // ── Grammar notes ──
+              _SectionTitle('语法笔记', Icons.edit_note),
               const SizedBox(height: 8),
               TextField(
-                controller: _noteController,
+                controller: _noteCtrl,
                 minLines: 3,
                 maxLines: 6,
                 decoration: const InputDecoration(
@@ -136,17 +178,13 @@ class _ComparisonResultSheetState extends State<ComparisonResultSheet> {
   Future<void> _saveNote() async {
     setState(() => _savingNote = true);
     try {
-      await widget.onSaveNote(_noteController.text.trim());
-      if (!mounted) {
-        return;
-      }
+      await widget.onSaveNote(_noteCtrl.text.trim());
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('笔记已保存')),
       );
     } finally {
-      if (mounted) {
-        setState(() => _savingNote = false);
-      }
+      if (mounted) setState(() => _savingNote = false);
     }
   }
 
@@ -157,34 +195,64 @@ class _ComparisonResultSheetState extends State<ComparisonResultSheet> {
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
 
-    final entry = await _dictionaryService.lookup(word);
-    if (!mounted) {
-      return;
-    }
+    final entry = await _dict.lookup(word);
+    if (!mounted) return;
     Navigator.of(context).pop();
 
     await showDialog<void>(
       context: context,
-      builder: (context) {
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
         return AlertDialog(
-          title: Text(entry.word.isEmpty ? '词典' : entry.word),
+          title: Row(
+            children: [
+              Icon(Icons.menu_book, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(entry.word.isEmpty ? '词典' : entry.word),
+              ),
+            ],
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('来源：${entry.source}'),
+              if (entry.phonetic.isNotEmpty) ...[
+                Text(entry.phonetic,
+                    style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
+                const SizedBox(height: 8),
+              ],
+              Text('来源：${entry.source}',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant)),
               const SizedBox(height: 12),
-              ...entry.definitions.map(
-                (definition) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text('• $definition'),
-                ),
-              ),
+              ...entry.definitions.map((d) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('• ', style: TextStyle(color: theme.colorScheme.primary)),
+                        Expanded(child: Text(d)),
+                      ],
+                    ),
+                  )),
+              if (entry.examples.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text('例句', style: theme.textTheme.labelLarge),
+                const SizedBox(height: 4),
+                ...entry.examples.map((ex) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text('→ $ex',
+                          style: TextStyle(
+                              fontStyle: FontStyle.italic,
+                              color: theme.colorScheme.onSurfaceVariant)),
+                    )),
+              ],
             ],
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => Navigator.of(ctx).pop(),
               child: const Text('关闭'),
             ),
           ],
@@ -194,79 +262,86 @@ class _ComparisonResultSheetState extends State<ComparisonResultSheet> {
   }
 }
 
-class _SummaryChip extends StatelessWidget {
-  const _SummaryChip({required this.label, required this.color});
-
-  final String label;
-  final Color color;
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.title, this.icon);
+  final String title;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    return Chip(
-      avatar: CircleAvatar(backgroundColor: color, radius: 5),
-      label: Text(label),
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: theme.colorScheme.primary),
+        const SizedBox(width: 6),
+        Text(title, style: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w800,
+        )),
+      ],
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  const _StatChip(this.label, this.fg, this.bg);
+  final String label;
+  final Color fg;
+  final Color bg;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: AppTheme.borderSm,
+      ),
+      child: Text(label,
+          style: TextStyle(color: fg, fontWeight: FontWeight.w700, fontSize: 12)),
     );
   }
 }
 
 class _ComparisonToken extends StatelessWidget {
   const _ComparisonToken({required this.item, required this.onTap});
-
   final WordComparison item;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final colors = _colorsFor(context, item.status);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = _colorsFor(item.status, isDark);
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
+      borderRadius: AppTheme.borderSm,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
         constraints: const BoxConstraints(minHeight: 36),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: colors.background,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: colors.border),
+          color: colors.$1,
+          borderRadius: AppTheme.borderSm,
+          border: Border.all(color: colors.$2),
         ),
         child: Text(
           item.displayText,
-          style: TextStyle(color: colors.foreground, fontWeight: FontWeight.w600),
+          style: TextStyle(color: colors.$3, fontWeight: FontWeight.w600),
         ),
       ),
     );
   }
 
-  _TokenColors _colorsFor(BuildContext context, ComparisonStatus status) {
-    final colorScheme = Theme.of(context).colorScheme;
+  (Color bg, Color border, Color fg) _colorsFor(ComparisonStatus status, bool isDark) {
     return switch (status) {
-      ComparisonStatus.correct => const _TokenColors(
-          background: Color(0xFFE8F5E9),
-          border: Color(0xFF81C784),
-          foreground: Color(0xFF1B5E20),
-        ),
-      ComparisonStatus.minor => const _TokenColors(
-          background: Color(0xFFFFF8E1),
-          border: Color(0xFFFFCA28),
-          foreground: Color(0xFF6D4C00),
-        ),
-      ComparisonStatus.wrong => _TokenColors(
-          background: const Color(0xFFFFEBEE),
-          border: const Color(0xFFE57373),
-          foreground: colorScheme.error,
-        ),
+      ComparisonStatus.correct => isDark
+          ? (AppTheme.correctBgDark, AppTheme.correctBorderDark, AppTheme.correctFgDark)
+          : (AppTheme.correctBg, AppTheme.correctBorder, AppTheme.correctFg),
+      ComparisonStatus.minor => isDark
+          ? (AppTheme.minorBgDark, AppTheme.minorBorderDark, AppTheme.minorFgDark)
+          : (AppTheme.minorBg, AppTheme.minorBorder, AppTheme.minorFg),
+      ComparisonStatus.wrong => isDark
+          ? (AppTheme.wrongBgDark, AppTheme.wrongBorderDark, AppTheme.wrongFgDark)
+          : (AppTheme.wrongBg, AppTheme.wrongBorder, AppTheme.wrongFg),
     };
   }
-}
-
-class _TokenColors {
-  const _TokenColors({
-    required this.background,
-    required this.border,
-    required this.foreground,
-  });
-
-  final Color background;
-  final Color border;
-  final Color foreground;
 }

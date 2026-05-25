@@ -8,6 +8,8 @@ class WrongWord {
     required this.sentenceText,
     required this.projectName,
     required this.createdAt,
+    this.mastered = false,
+    this.reviewCount = 0,
   });
 
   final int id;
@@ -18,4 +20,6 @@ class WrongWord {
   final String sentenceText;
   final String projectName;
   final DateTime createdAt;
+  final bool mastered;
+  final int reviewCount;
 }

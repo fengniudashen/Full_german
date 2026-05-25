@@ -5,7 +5,7 @@ import 'app.dart';
 import 'data/app_database.dart';
 import 'providers/app_state.dart';
 
-Future<void> main() async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final database = AppDatabase();
@@ -13,8 +13,8 @@ Future<void> main() async {
   await appState.loadInitialData();
 
   runApp(
-    ChangeNotifierProvider<AppState>(
-      create: (_) => appState,
+    ChangeNotifierProvider<AppState>.value(
+      value: appState,
       child: const DeutschFlowApp(),
     ),
   );

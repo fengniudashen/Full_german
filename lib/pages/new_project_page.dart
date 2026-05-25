@@ -4,8 +4,9 @@ import 'package:provider/provider.dart';
 
 import '../providers/app_state.dart';
 import '../services/text_parser.dart';
+import '../theme/app_theme.dart';
+import '../widgets/glass_card.dart';
 import '../widgets/responsive_page.dart';
-import '../widgets/surface_panel.dart';
 import 'timeline_page.dart';
 
 class NewProjectPage extends StatefulWidget {
@@ -17,22 +18,22 @@ class NewProjectPage extends StatefulWidget {
 
 class _NewProjectPageState extends State<NewProjectPage> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _textController = TextEditingController();
+  final _nameCtrl = TextEditingController();
+  final _textCtrl = TextEditingController();
   String? _audioPath;
   String? _audioName;
   bool _creating = false;
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _textController.dispose();
+    _nameCtrl.dispose();
+    _textCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final previewSentences = TextParser.splitIntoSentences(_textController.text);
+    final sentences = TextParser.splitIntoSentences(_textCtrl.text);
 
     return Scaffold(
       appBar: AppBar(title: const Text('新建项目')),
@@ -40,11 +41,8 @@ class _NewProjectPageState extends State<NewProjectPage> {
         maxWidth: 1120,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final form = Form(
-              key: _formKey,
-              child: _buildForm(previewSentences.length),
-            );
-            final preview = _buildPreview(context, previewSentences);
+            final form = Form(key: _formKey, child: _buildForm(sentences.length));
+            final preview = _buildPreview(context, sentences);
             if (constraints.maxWidth >= 900) {
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,43 +63,44 @@ class _NewProjectPageState extends State<NewProjectPage> {
     );
   }
 
-  Widget _buildForm(int previewCount) {
-    return SurfacePanel(
-      padding: const EdgeInsets.all(18),
+  Widget _buildForm(int count) {
+    return GlassCard(
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TextFormField(
-            controller: _nameController,
+            controller: _nameCtrl,
             decoration: const InputDecoration(
               labelText: '项目名称',
               prefixIcon: Icon(Icons.drive_file_rename_outline),
             ),
-            validator: (value) => value == null || value.trim().isEmpty ? '请输入项目名称' : null,
+            validator: (v) =>
+                v == null || v.trim().isEmpty ? '请输入项目名称' : null,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           _AudioImportTile(audioName: _audioName, onPick: _pickAudio),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           TextFormField(
-            controller: _textController,
-            minLines: 12,
+            controller: _textCtrl,
+            minLines: 10,
             maxLines: 18,
             decoration: InputDecoration(
               labelText: '德语原文',
               alignLabelWithHint: true,
-              hintText: 'Guten Morgen! Wie geht es dir? Ich lerne Deutsch.',
-              helperText: previewCount > 0 ? '已解析 $previewCount 个句子' : null,
+              hintText:
+                  'Guten Morgen! Wie geht es dir? Ich lerne Deutsch.',
+              helperText: count > 0 ? '已解析 $count 个句子' : null,
             ),
             onChanged: (_) => setState(() {}),
-            validator: (value) {
-              final sentences = TextParser.splitIntoSentences(value ?? '');
-              if (sentences.isEmpty) {
+            validator: (v) {
+              if (TextParser.splitIntoSentences(v ?? '').isEmpty) {
                 return '请粘贴至少一个句子';
               }
               return null;
             },
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 20),
           FilledButton.icon(
             onPressed: _creating ? null : _createProject,
             icon: _creating
@@ -119,9 +118,8 @@ class _NewProjectPageState extends State<NewProjectPage> {
 
   Widget _buildPreview(BuildContext context, List<String> sentences) {
     final theme = Theme.of(context);
-    return SurfacePanel(
-      padding: const EdgeInsets.all(18),
-      color: theme.colorScheme.surfaceContainerLow,
+    return GlassCard(
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -130,38 +128,66 @@ class _NewProjectPageState extends State<NewProjectPage> {
               Icon(Icons.segment_outlined, color: theme.colorScheme.primary),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  '句子预览',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-                ),
+                child: Text('句子预览',
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w900)),
               ),
-              Chip(label: Text('${sentences.length} 句')),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: AppTheme.borderSm,
+                ),
+                child: Text('${sentences.length} 句',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                      color: theme.colorScheme.onPrimaryContainer,
+                    )),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           if (sentences.isEmpty)
             Text(
               '粘贴原文后会按 . ! ? 自动拆句。',
-              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             )
           else
-            ...sentences.take(8).map(
-                  (sentence) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(Icons.notes_outlined, size: 18, color: theme.colorScheme.secondary),
-                        const SizedBox(width: 8),
-                        Expanded(child: Text(sentence)),
-                      ],
+            ...sentences.take(10).indexed.map((entry) {
+              final (i, s) = entry;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 24,
+                      height: 24,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Text('${i + 1}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: theme.colorScheme.primary,
+                          )),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(s)),
+                  ],
                 ),
-          if (sentences.length > 8)
+              );
+            }),
+          if (sentences.length > 10)
             Text(
-              '另有 ${sentences.length - 8} 句未显示',
-              style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              '另有 ${sentences.length - 10} 句未显示',
+              style: theme.textTheme.labelMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
         ],
       ),
@@ -171,18 +197,14 @@ class _NewProjectPageState extends State<NewProjectPage> {
   Future<void> _pickAudio() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const ['mp3'],
+      allowedExtensions: const ['mp3', 'wav', 'm4a', 'ogg'],
       allowMultiple: false,
       withData: false,
     );
     final file = result?.files.single;
-    if (file == null) {
-      return;
-    }
+    if (file == null) return;
     if (file.path == null) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('当前平台未返回可访问的音频路径')),
       );
@@ -195,84 +217,112 @@ class _NewProjectPageState extends State<NewProjectPage> {
   }
 
   Future<void> _createProject() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
     if (_audioPath == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先导入 MP3 音频')),
+        const SnackBar(content: Text('请先导入音频文件')),
       );
       return;
     }
 
     setState(() => _creating = true);
     try {
-      final projectId = await context.read<AppState>().createProject(
-            name: _nameController.text,
-            sourceText: _textController.text,
+      final id = await context.read<AppState>().createProject(
+            name: _nameCtrl.text,
+            sourceText: _textCtrl.text,
             audioPath: _audioPath!,
           );
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => TimelinePage(projectId: projectId)),
+        MaterialPageRoute<void>(builder: (_) => TimelinePage(projectId: id)),
       );
-    } on ArgumentError catch (error) {
-      if (!mounted) {
-        return;
-      }
+    } on ArgumentError catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message.toString())),
+        SnackBar(content: Text(e.message.toString())),
       );
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('创建失败：$error')),
+        SnackBar(content: Text('创建失败：$e')),
       );
     } finally {
-      if (mounted) {
-        setState(() => _creating = false);
-      }
+      if (mounted) setState(() => _creating = false);
     }
   }
 }
 
 class _AudioImportTile extends StatelessWidget {
   const _AudioImportTile({required this.audioName, required this.onPick});
-
   final String? audioName;
   final VoidCallback onPick;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final hasFile = audioName != null;
+
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.18)),
+        gradient: hasFile
+            ? LinearGradient(colors: [
+                AppTheme.emerald.withValues(alpha: isDark ? 0.15 : 0.06),
+                AppTheme.emerald.withValues(alpha: isDark ? 0.08 : 0.02),
+              ])
+            : LinearGradient(colors: [
+                theme.colorScheme.primary.withValues(alpha: isDark ? 0.12 : 0.06),
+                theme.colorScheme.primary.withValues(alpha: isDark ? 0.06 : 0.02),
+              ]),
+        borderRadius: AppTheme.borderMd,
+        border: Border.all(
+          color: hasFile
+              ? AppTheme.emerald.withValues(alpha: 0.3)
+              : theme.colorScheme.primary.withValues(alpha: 0.2),
+        ),
       ),
       child: Row(
         children: [
-          Icon(Icons.audio_file_outlined, color: theme.colorScheme.primary),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: (hasFile ? AppTheme.emerald : theme.colorScheme.primary)
+                  .withValues(alpha: 0.15),
+              borderRadius: AppTheme.borderSm,
+            ),
+            child: Icon(
+              hasFile ? Icons.check_circle : Icons.audio_file_outlined,
+              color: hasFile ? AppTheme.emerald : theme.colorScheme.primary,
+              size: 20,
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              audioName ?? '尚未导入 MP3 音频',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.w700),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hasFile ? audioName! : '尚未导入音频',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                ),
+                if (!hasFile)
+                  Text('支持 MP3, WAV, M4A, OGG',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      )),
+              ],
             ),
           ),
           const SizedBox(width: 12),
           FilledButton.tonalIcon(
             onPressed: onPick,
-            icon: const Icon(Icons.upload_file),
-            label: const Text('导入'),
+            icon: const Icon(Icons.upload_file, size: 18),
+            label: Text(hasFile ? '更换' : '导入'),
           ),
         ],
       ),

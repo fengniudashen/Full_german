@@ -2,20 +2,19 @@ import '../models/wrong_word.dart';
 
 class CsvExporter {
   static String buildWrongWordsCsv(List<WrongWord> rows) {
-    final buffer = StringBuffer();
-    buffer.writeln('错误形式,正确形式,原文句子,来源项目,日期');
-
-    for (final row in rows) {
-      buffer.writeln([
-        row.wrongForm,
-        row.correctForm,
-        row.sentenceText,
-        row.projectName,
-        row.createdAt.toIso8601String(),
+    final buf = StringBuffer();
+    buf.writeln('错误形式,正确形式,原文句子,来源项目,日期,已掌握');
+    for (final r in rows) {
+      buf.writeln([
+        r.wrongForm,
+        r.correctForm,
+        r.sentenceText,
+        r.projectName,
+        r.createdAt.toIso8601String(),
+        r.mastered ? '是' : '否',
       ].map(_escape).join(','));
     }
-
-    return buffer.toString();
+    return buf.toString();
   }
 
   static String _escape(String value) {

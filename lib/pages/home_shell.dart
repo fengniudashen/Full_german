@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../providers/app_state.dart';
+import '../theme/app_theme.dart';
+import 'dashboard_page.dart';
 import 'new_project_page.dart';
 import 'projects_page.dart';
+import 'search_page.dart';
+import 'settings_page.dart';
 import 'wrong_words_page.dart';
 
 class HomeShell extends StatefulWidget {
@@ -14,50 +20,53 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _selectedIndex = 0;
 
+  static const _destinations = [
+    _NavItem(Icons.dashboard_outlined, Icons.dashboard, '总览'),
+    _NavItem(Icons.folder_outlined, Icons.folder, '项目'),
+    _NavItem(Icons.spellcheck_outlined, Icons.spellcheck, '错词本'),
+    _NavItem(Icons.settings_outlined, Icons.settings, '设置'),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 900;
-    final title = _selectedIndex == 0 ? '学习项目' : '错词本';
-    final subtitle = _selectedIndex == 0 ? '整理音频、标注时间轴并开始听写' : '复盘红色错误并导出 CSV';
+    final extended = MediaQuery.sizeOf(context).width >= 1180;
+
+    final pages = const [
+      DashboardPage(),
+      ProjectsPage(),
+      WrongWordsPage(),
+      SettingsPage(),
+    ];
 
     if (wide) {
       return Scaffold(
         body: Row(
           children: [
-            NavigationRail(
-              extended: MediaQuery.sizeOf(context).width >= 1180,
+            _DesktopNavRail(
               selectedIndex: _selectedIndex,
-              onDestinationSelected: (index) => setState(() => _selectedIndex = index),
-              leading: Padding(
-                padding: const EdgeInsets.only(top: 18, bottom: 18),
-                child: _BrandMark(extended: MediaQuery.sizeOf(context).width >= 1180),
-              ),
-              destinations: const [
-                NavigationRailDestination(
-                  icon: Icon(Icons.folder_outlined),
-                  selectedIcon: Icon(Icons.folder),
-                  label: Text('项目'),
-                ),
-                NavigationRailDestination(
-                  icon: Icon(Icons.error_outline),
-                  selectedIcon: Icon(Icons.error),
-                  label: Text('错词本'),
-                ),
-              ],
+              extended: extended,
+              onSelect: (i) => setState(() => _selectedIndex = i),
             ),
-            const VerticalDivider(width: 1),
+            VerticalDivider(
+              width: 1,
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
             Expanded(
               child: Column(
                 children: [
-                  _WorkspaceHeader(
-                    title: title,
-                    subtitle: subtitle,
-                    showCreate: _selectedIndex == 0,
+                  _DesktopTopBar(
+                    title: _destinations[_selectedIndex].label,
+                    showCreate: _selectedIndex == 1,
+                    showSearch: true,
                   ),
                   Expanded(
-                    child: IndexedStack(
-                      index: _selectedIndex,
-                      children: const [ProjectsPage(), WrongWordsPage()],
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: KeyedSubtree(
+                        key: ValueKey(_selectedIndex),
+                        child: pages[_selectedIndex],
+                      ),
                     ),
                   ),
                 ],
@@ -68,112 +77,104 @@ class _HomeShellState extends State<HomeShell> {
       );
     }
 
+    // Mobile layout
     return Scaffold(
       appBar: AppBar(
-        title: Text(_selectedIndex == 0 ? 'DeutschFlow' : '错词本'),
+        title: Text(_selectedIndex == 0
+            ? 'DeutschFlow'
+            : _destinations[_selectedIndex].label),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const SearchPage()),
+            ),
+          ),
+        ],
       ),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: const [ProjectsPage(), WrongWordsPage()],
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: KeyedSubtree(
+          key: ValueKey(_selectedIndex),
+          child: pages[_selectedIndex],
+        ),
       ),
-      floatingActionButton: _selectedIndex == 0
+      floatingActionButton: _selectedIndex == 1
           ? FloatingActionButton.extended(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const NewProjectPage()),
-                );
-              },
+              heroTag: 'create_project',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const NewProjectPage()),
+              ),
               icon: const Icon(Icons.add),
               label: const Text('新建'),
             )
           : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) => setState(() => _selectedIndex = index),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.folder_outlined),
-            selectedIcon: Icon(Icons.folder),
-            label: '项目',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.error_outline),
-            selectedIcon: Icon(Icons.error),
-            label: '错词本',
-          ),
-        ],
+        onDestinationSelected: (i) => setState(() => _selectedIndex = i),
+        destinations: _destinations
+            .map((d) => NavigationDestination(
+                  icon: Icon(d.icon),
+                  selectedIcon: Icon(d.activeIcon),
+                  label: d.label,
+                ))
+            .toList(),
       ),
     );
   }
 }
 
-class _WorkspaceHeader extends StatelessWidget {
-  const _WorkspaceHeader({
-    required this.title,
-    required this.subtitle,
-    required this.showCreate,
+class _NavItem {
+  const _NavItem(this.icon, this.activeIcon, this.label);
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Desktop Navigation Rail
+// ═══════════════════════════════════════════════════════════════
+
+class _DesktopNavRail extends StatelessWidget {
+  const _DesktopNavRail({
+    required this.selectedIndex,
+    required this.extended,
+    required this.onSelect,
   });
 
-  final String title;
-  final String subtitle;
-  final bool showCreate;
+  final int selectedIndex;
+  final bool extended;
+  final ValueChanged<int> onSelect;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      height: 86,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border(bottom: BorderSide(color: theme.colorScheme.outlineVariant)),
+    return NavigationRail(
+      extended: extended,
+      selectedIndex: selectedIndex,
+      onDestinationSelected: onSelect,
+      leading: Padding(
+        padding: const EdgeInsets.only(top: 16, bottom: 8),
+        child: _BrandMark(extended: extended),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (showCreate)
-            FilledButton.icon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const NewProjectPage()),
-                );
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('新建项目'),
-            ),
-        ],
-      ),
+      destinations: HomeShellState._destinations
+          .map((d) => NavigationRailDestination(
+                icon: Icon(d.icon),
+                selectedIcon: Icon(d.activeIcon),
+                label: Text(d.label),
+              ))
+          .toList(),
     );
   }
 }
 
 class _BrandMark extends StatelessWidget {
   const _BrandMark({required this.extended});
-
   final bool extended;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -181,19 +182,122 @@ class _BrandMark extends StatelessWidget {
           width: 42,
           height: 42,
           decoration: BoxDecoration(
-            color: scheme.primary,
-            borderRadius: BorderRadius.circular(8),
+            gradient: isDark ? AppTheme.heroGradientDark : AppTheme.heroGradient,
+            borderRadius: AppTheme.borderMd,
+            boxShadow: [
+              BoxShadow(
+                color: scheme.primary.withValues(alpha: 0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          child: Icon(Icons.graphic_eq, color: scheme.onPrimary),
+          child: const Icon(Icons.graphic_eq, color: Colors.white, size: 22),
         ),
         if (extended) ...[
           const SizedBox(width: 10),
           Text(
             'DeutschFlow',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.3,
+                ),
           ),
         ],
       ],
     );
   }
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  Desktop Top Bar
+// ═══════════════════════════════════════════════════════════════
+
+class _DesktopTopBar extends StatelessWidget {
+  const _DesktopTopBar({
+    required this.title,
+    required this.showCreate,
+    required this.showSearch,
+  });
+
+  final String title;
+  final bool showCreate;
+  final bool showSearch;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final appState = context.watch<AppState>();
+    return Container(
+      height: 68,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(color: theme.colorScheme.outlineVariant),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+
+          // Streak badge
+          if (appState.streakDays > 0) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                gradient: AppTheme.warmGradient,
+                borderRadius: AppTheme.borderSm,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.local_fire_department,
+                      color: Colors.white, size: 16),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${appState.streakDays} 天连续',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+          ],
+
+          if (showSearch)
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const SearchPage()),
+              ),
+            ),
+          if (showCreate) ...[
+            const SizedBox(width: 8),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const NewProjectPage()),
+              ),
+              icon: const Icon(Icons.add),
+              label: const Text('新建项目'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// Type alias for the private state so other widgets can reference _destinations
+typedef HomeShellState = _HomeShellState;
