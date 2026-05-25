@@ -111,9 +111,10 @@ class YoutubeService {
       f.deleteSync();
     }
 
-    // Download without format restriction - let yt-dlp pick the best available
+    // Try audio-only first (smaller, plays better in just_audio)
     onStatus?.call('正在下载音频和字幕…');
     var result = await Process.run(exe, [
+      '--format', 'bestaudio[ext=m4a]/bestaudio',
       '-o', p.join(outputDir, '%(title)s.%(ext)s'),
       '--write-subs',
       '--write-auto-subs',
@@ -123,6 +124,25 @@ class YoutubeService {
       '--no-warnings',
       videoUrl,
     ]);
+
+    // Fallback: download combined format (includes video but always works)
+    if (result.exitCode != 0) {
+      onStatus?.call('重试下载…');
+      // Clean failed partial downloads
+      for (final f in dir.listSync().whereType<File>()) {
+        f.deleteSync();
+      }
+      result = await Process.run(exe, [
+        '-o', p.join(outputDir, '%(title)s.%(ext)s'),
+        '--write-subs',
+        '--write-auto-subs',
+        '--sub-lang', 'de',
+        '--sub-format', 'vtt',
+        '--no-playlist',
+        '--no-warnings',
+        videoUrl,
+      ]);
+    }
 
     if (result.exitCode != 0) {
       throw Exception('下载失败：${result.stderr}');
