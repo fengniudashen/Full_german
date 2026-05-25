@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 
@@ -1467,10 +1468,14 @@ class _AiResultSheetState extends State<_AiResultSheet> {
                         controller: scrollCtrl,
                         padding: const EdgeInsets.all(20),
                         children: [
-                          SelectableText(
-                            _result,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              height: 1.7,
+                          MarkdownBody(
+                            data: _result,
+                            selectable: true,
+                            styleSheet: MarkdownStyleSheet.fromTheme(
+                              Theme.of(context),
+                            ).copyWith(
+                              p: theme.textTheme.bodyMedium?.copyWith(height: 1.7),
+                              listBullet: theme.textTheme.bodyMedium?.copyWith(height: 1.7),
                             ),
                           ),
                         ],

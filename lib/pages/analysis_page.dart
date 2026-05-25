@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/app_state.dart';
@@ -248,10 +249,14 @@ class _AnalysisPageState extends State<AnalysisPage> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  SelectableText(
-                    _result,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      height: 1.6,
+                  MarkdownBody(
+                    data: _result,
+                    selectable: true,
+                    styleSheet: MarkdownStyleSheet.fromTheme(
+                      Theme.of(context),
+                    ).copyWith(
+                      p: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+                      listBullet: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
                     ),
                   ),
                 ],
