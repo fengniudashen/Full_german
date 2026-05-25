@@ -83,6 +83,8 @@ class _AnalysisPageState extends State<AnalysisPage> {
         result = await service.translate(text);
       case _AnalysisMode.phrase:
         result = await service.analyzePhrase(text, widget.initialSentence);
+      case _AnalysisMode.pronunciation:
+        result = await service.speakingCoach(text);
       case _AnalysisMode.ask:
         result = await service.ask(text);
     }
@@ -326,6 +328,7 @@ enum _AnalysisMode {
   grammar(Icons.schema_outlined, '语法', '输入要分析语法的德语句子', '输入完整的德语句子…'),
   translate(Icons.g_translate, '翻译', '输入要翻译的德语文本', '输入德语句子或段落…'),
   phrase(Icons.short_text, '片段', '输入要解析的德语片段', '例如: in Kürze bekannt gegeben'),
+  pronunciation(Icons.record_voice_over, '口语教练', '输入要练习朗读的德语句子', '输入完整的德语句子…'),
   ask(Icons.question_answer, '提问', '输入你的德语学习问题', '例如: 德语第二格有哪些用法？');
 
   const _AnalysisMode(this.icon, this.label, this.inputLabel, this.inputHint);

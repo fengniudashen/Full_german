@@ -593,6 +593,20 @@ class _DictationPageState extends State<DictationPage> {
                   ),
                 ),
               ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _handleAiAction(
+                    _AiAction.pronunciation, s.text, s.text,
+                  ),
+                  icon: const Icon(Icons.record_voice_over, size: 16),
+                  label: const Text('口语教练'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 36),
+                    textStyle: const TextStyle(fontSize: 12),
+                  ),
+                ),
+              ),
             ],
           ),
         ],
@@ -621,6 +635,7 @@ class _DictationPageState extends State<DictationPage> {
       case _AiAction.antonyms:
       case _AiAction.conjugate:
       case _AiAction.rewrite:
+      case _AiAction.pronunciation:
         _showAiQuickResult(action, text, sentenceCtx);
     }
   }
@@ -1213,7 +1228,8 @@ enum _AiAction {
   synonyms('近义词', Icons.swap_horiz),
   antonyms('反义词', Icons.compare_arrows),
   conjugate('变形表', Icons.table_chart_outlined),
-  rewrite('改写', Icons.autorenew);
+  rewrite('改写', Icons.autorenew),
+  pronunciation('口语教练', Icons.record_voice_over);
 
   const _AiAction(this.label, this.icon);
   final String label;
@@ -1304,7 +1320,7 @@ class _WordChip extends StatelessWidget {
                     onTap: () {
                       Navigator.of(ctx).pop();
                       final input =
-                          a == _AiAction.grammar || a == _AiAction.translate || a == _AiAction.rewrite
+                          a == _AiAction.grammar || a == _AiAction.translate || a == _AiAction.rewrite || a == _AiAction.pronunciation
                               ? sentenceContext
                               : cleanWord;
                       onAiAction(a, input, sentenceContext);
@@ -1375,6 +1391,8 @@ class _AiResultSheetState extends State<_AiResultSheet> {
             await service.conjugate(widget.text, widget.sentenceContext);
       case _AiAction.rewrite:
         result = await service.rewrite(widget.text);
+      case _AiAction.pronunciation:
+        result = await service.speakingCoach(widget.text);
       case _AiAction.openAnalysis:
         result = ''; // Won't reach here
     }

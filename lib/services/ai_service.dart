@@ -195,6 +195,29 @@ $question
 ''');
   }
 
+  /// Speaking coach — pronunciation, stress, connected speech analysis.
+  Future<String> speakingCoach(String sentence) async {
+    return _chat('''
+你是一位专业的德语语音教练，精通德语发音规则。请对以下德语句子进行详细的朗读指导：
+
+**句子：** $sentence
+
+请提供以下分析：
+1. **逐词注音**（用国际音标 IPA 标注每个单词的发音）
+2. **重音标注**（标出每个多音节单词的重音音节，以及句子中的重读词）
+3. **连读现象**（哪些词之间会连读，如何连读）
+4. **吞音/弱读**（哪些音节或词在口语中会弱化、省略或模糊化，例如 -en 的弱读、schwa 音的省略等）
+5. **语调走向**（整句的升降调模式，在哪里停顿）
+6. **发音难点提醒**（对中国学习者特别容易读错的音，如 ch/sch/r/ü/ö 等，给出针对性建议）
+7. **慢速朗读分段**（把句子按意群切分，标注停顿位置，方便跟读练习）
+''');
+  }
+
+  static const _systemMessage =
+      '你是一位专业的德语教师。请务必全部使用中文回答，不要使用英文。'
+      '不要输出任何思考过程或 <think> 标签，直接给出最终答案。'
+      '使用 Markdown 格式排版，善用标题、加粗、列表和表格让内容清晰易读。';
+
   Future<String> _chat(String prompt) async {
     if (!provider.hasKey) {
       return '⚠️ 请先在设置中配置 ${provider.name} 的 API Key。\n\n'
@@ -220,6 +243,7 @@ $question
       final body = jsonEncode({
         'model': provider.model,
         'messages': [
+          {'role': 'system', 'content': _systemMessage},
           {'role': 'user', 'content': prompt},
         ],
         'temperature': 0.3,
@@ -249,7 +273,8 @@ $question
       if (choices == null || choices.isEmpty) {
         return '❌ ${provider.name} 无响应内容。';
       }
-      return (choices[0]['message']['content'] as String).trim();
+      return _stripThinkTags(
+          (choices[0]['message']['content'] as String).trim());
     } on SocketException catch (e) {
       return '❌ 网络错误: $e\n\n请检查网络连接。';
     } catch (e) {
@@ -272,6 +297,7 @@ $question
       final body = jsonEncode({
         'model': provider.model,
         'max_tokens': 2000,
+        'system': _systemMessage,
         'messages': [
           {'role': 'user', 'content': prompt},
         ],
@@ -300,7 +326,7 @@ $question
       if (content == null || content.isEmpty) {
         return '❌ Claude 无响应内容。';
       }
-      return (content[0]['text'] as String).trim();
+      return _stripThinkTags((content[0]['text'] as String).trim());
     } on SocketException catch (e) {
       return '❌ 网络错误: $e\n\n请检查网络连接。';
     } catch (e) {
@@ -308,5 +334,12 @@ $question
     } finally {
       client.close();
     }
+  }
+
+  /// Remove <think>...</think> blocks that some models emit.
+  static String _stripThinkTags(String text) {
+    return text
+        .replaceAll(RegExp(r'<think>[\s\S]*?</think>', multiLine: true), '')
+        .trim();
   }
 }
