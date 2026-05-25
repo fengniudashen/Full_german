@@ -1,7 +1,9 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../models/wrong_word.dart';
 import '../providers/app_state.dart';
@@ -166,11 +168,29 @@ class _WrongWordsPageState extends State<WrongWordsPage> {
       final file = await context
           .read<AppState>()
           .exportWrongWordsCsv(projectId: _filterProjectId);
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        text: 'DeutschFlow 错词本 CSV',
-        subject: 'DeutschFlow 错词本',
+
+      // Let user choose save location
+      final outputPath = await FilePicker.platform.saveFile(
+        dialogTitle: '导出错词本 CSV',
+        fileName: 'deutschflow_wrong_words.csv',
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
       );
+
+      if (outputPath != null) {
+        await File(file.path).copy(outputPath);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('已导出到: $outputPath')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('导出失败: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
