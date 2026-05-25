@@ -7,17 +7,17 @@ import 'package:path_provider/path_provider.dart';
 
 /// Manages yt-dlp binary and video/subtitle downloads.
 class YoutubeService {
-  static const _ytDlpVersion = '2024.12.23';
   static const _ytDlpUrl =
-      'https://github.com/yt-dlp/yt-dlp/releases/download/$_ytDlpVersion/yt-dlp.exe';
+      'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe';
 
   String? _ytDlpPath;
 
   /// Returns the path to yt-dlp.exe, downloading it if needed.
   Future<String> ensureYtDlp({
     void Function(double progress)? onProgress,
+    bool forceUpdate = false,
   }) async {
-    if (_ytDlpPath != null && File(_ytDlpPath!).existsSync()) {
+    if (!forceUpdate && _ytDlpPath != null && File(_ytDlpPath!).existsSync()) {
       return _ytDlpPath!;
     }
 
@@ -26,17 +26,25 @@ class YoutubeService {
     if (!toolDir.existsSync()) toolDir.createSync(recursive: true);
 
     final exePath = p.join(toolDir.path, 'yt-dlp.exe');
-    if (File(exePath).existsSync()) {
+    if (!forceUpdate && File(exePath).existsSync()) {
       _ytDlpPath = exePath;
       return exePath;
     }
 
-    // Download yt-dlp
-    final request = http.Request('GET', Uri.parse(_ytDlpUrl));
-    final response = await http.Client().send(request);
-    if (response.statusCode != 200) {
-      throw Exception('下载 yt-dlp 失败 (HTTP ${response.statusCode})');
+    // Delete old version if forcing update
+    if (File(exePath).existsSync()) {
+      File(exePath).deleteSync();
     }
+
+    // Download yt-dlp (follows redirects via GitHub's /latest/)
+    final client = http.Client();
+    try {
+      final request = http.Request('GET', Uri.parse(_ytDlpUrl));
+      request.followRedirects = true;
+      final response = await client.send(request);
+      if (response.statusCode != 200) {
+        throw Exception('下载 yt-dlp 失败 (HTTP ${response.statusCode})');
+      }
 
     final totalBytes = response.contentLength ?? 0;
     final sink = File(exePath).openWrite();
@@ -50,6 +58,9 @@ class YoutubeService {
       }
     }
     await sink.close();
+    } finally {
+      client.close();
+    }
     _ytDlpPath = exePath;
     return exePath;
   }
@@ -98,10 +109,9 @@ class YoutubeService {
     if (!dir.existsSync()) dir.createSync(recursive: true);
 
     // Download audio + subtitles in one pass
-    // Use m4a (native, no ffmpeg needed) with fallback to any audio format
     onStatus?.call('正在下载音频和字幕…');
-    final result = await Process.run(exe, [
-      '--format', 'bestaudio[ext=m4a]/bestaudio/best',
+    var result = await Process.run(exe, [
+      '--format', 'bestaudio/best',
       '-o', p.join(outputDir, '%(title)s.%(ext)s'),
       '--write-subs',
       '--write-auto-subs',
@@ -111,6 +121,22 @@ class YoutubeService {
       '--no-warnings',
       videoUrl,
     ]);
+
+    // Fallback: if bestaudio fails, try downloading best (video+audio)
+    if (result.exitCode != 0) {
+      onStatus?.call('重试下载（使用备用格式）…');
+      result = await Process.run(exe, [
+        '--format', 'best',
+        '-o', p.join(outputDir, '%(title)s.%(ext)s'),
+        '--write-subs',
+        '--write-auto-subs',
+        '--sub-lang', 'de',
+        '--sub-format', 'vtt',
+        '--no-playlist',
+        '--no-warnings',
+        videoUrl,
+      ]);
+    }
 
     if (result.exitCode != 0) {
       throw Exception('下载失败：${result.stderr}');

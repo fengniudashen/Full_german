@@ -156,9 +156,24 @@ class _YoutubePageState extends State<YoutubePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('推荐播放列表',
-            style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w900)),
+        Row(
+          children: [
+            Expanded(
+              child: Text('推荐播放列表',
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w900)),
+            ),
+            TextButton.icon(
+              onPressed: _downloadingYtDlp ? null : _updateYtDlp,
+              icon: _downloadingYtDlp
+                  ? const SizedBox.square(
+                      dimension: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.update, size: 18),
+              label: Text(_downloadingYtDlp ? '更新中…' : '更新 yt-dlp'),
+            ),
+          ],
+        ),
         const SizedBox(height: 10),
         ...List.generate(_presets.length, (i) {
           final preset = _presets[i];
@@ -405,6 +420,35 @@ class _YoutubePageState extends State<YoutubePage> {
         setState(() {
           _downloadingYtDlp = false;
           _ytDlpError = '下载失败：$e';
+        });
+      }
+    }
+  }
+
+  Future<void> _updateYtDlp() async {
+    setState(() {
+      _downloadingYtDlp = true;
+      _ytDlpError = null;
+      _ytDlpProgress = 0;
+    });
+    try {
+      await _ytService.ensureYtDlp(
+        forceUpdate: true,
+        onProgress: (p) {
+          if (mounted) setState(() => _ytDlpProgress = p);
+        },
+      );
+      if (mounted) {
+        setState(() => _downloadingYtDlp = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('yt-dlp 已更新到最新版本')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _downloadingYtDlp = false;
+          _ytDlpError = '更新失败：$e';
         });
       }
     }
