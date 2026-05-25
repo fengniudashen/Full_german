@@ -465,11 +465,12 @@ class _AiSettings extends StatelessWidget {
               TextField(
                 controller: urlCtrl,
                 decoration: InputDecoration(
-                  labelText: 'API 地址',
+                  labelText: 'API 地址 (Base URL)',
                   hintText: preset.baseUrl,
                   border: const OutlineInputBorder(),
-                  helperText: '默认: ${preset.baseUrl}',
-                  helperMaxLines: 2,
+                  helperText: '完整路径: ${preset.baseUrl}/v1/chat/completions\n'
+                      '只填基础地址，/v1/chat/completions 会自动添加',
+                  helperMaxLines: 3,
                 ),
               ),
               const SizedBox(height: 12),
