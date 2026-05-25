@@ -97,46 +97,36 @@ class YoutubeService {
     final dir = Directory(outputDir);
     if (!dir.existsSync()) dir.createSync(recursive: true);
 
-    // Download audio as mp3
-    onStatus?.call('正在下载音频…');
-    final audioResult = await Process.run(exe, [
-      '-x',
-      '--audio-format', 'mp3',
-      '--audio-quality', '5',
+    // Download audio + subtitles in one pass
+    // Use m4a (native, no ffmpeg needed) with fallback to any audio format
+    onStatus?.call('正在下载音频和字幕…');
+    final result = await Process.run(exe, [
+      '--format', 'bestaudio[ext=m4a]/bestaudio/best',
       '-o', p.join(outputDir, '%(title)s.%(ext)s'),
-      '--no-playlist',
-      '--no-warnings',
-      videoUrl,
-    ]);
-
-    if (audioResult.exitCode != 0) {
-      throw Exception('音频下载失败：${audioResult.stderr}');
-    }
-
-    // Find the downloaded mp3
-    final audioFile = dir
-        .listSync()
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.mp3'))
-        .toList();
-    if (audioFile.isEmpty) {
-      throw Exception('未找到下载的音频文件');
-    }
-    final mp3Path = audioFile.last.path;
-
-    // Download German subtitles
-    onStatus?.call('正在下载字幕…');
-    await Process.run(exe, [
       '--write-subs',
       '--write-auto-subs',
       '--sub-lang', 'de',
       '--sub-format', 'vtt',
-      '--skip-download',
-      '-o', p.join(outputDir, '%(title)s.%(ext)s'),
       '--no-playlist',
       '--no-warnings',
       videoUrl,
     ]);
+
+    if (result.exitCode != 0) {
+      throw Exception('下载失败：${result.stderr}');
+    }
+
+    // Find the downloaded audio file
+    final audioExts = ['.m4a', '.mp3', '.webm', '.ogg', '.opus', '.wav', '.mp4'];
+    final audioFiles = dir
+        .listSync()
+        .whereType<File>()
+        .where((f) => audioExts.any((ext) => f.path.toLowerCase().endsWith(ext)))
+        .toList();
+    if (audioFiles.isEmpty) {
+      throw Exception('未找到下载的音频文件');
+    }
+    final audioPath = audioFiles.last.path;
 
     // Find subtitle file
     String? subtitlePath;
@@ -149,9 +139,9 @@ class YoutubeService {
     }
 
     return DownloadResult(
-      audioPath: mp3Path,
+      audioPath: audioPath,
       subtitlePath: subtitlePath,
-      title: p.basenameWithoutExtension(mp3Path),
+      title: p.basenameWithoutExtension(audioPath),
     );
   }
 
