@@ -231,9 +231,17 @@ $question
       final responseBody = await response.transform(utf8.decoder).join();
 
       if (response.statusCode != 200) {
-        final error = jsonDecode(responseBody);
-        final message = error['error']?['message'] ?? responseBody;
-        return '❌ ${provider.name} 错误 (${response.statusCode}): $message';
+        String message;
+        try {
+          final error = jsonDecode(responseBody);
+          message = error['error']?['message'] ?? responseBody;
+        } on FormatException {
+          message = responseBody.length > 200
+              ? responseBody.substring(0, 200)
+              : responseBody;
+        }
+        return '❌ ${provider.name} 错误 (${response.statusCode}): $message\n\n'
+            '请检查 API 地址是否正确: ${provider.baseUrl}/v1/chat/completions';
       }
 
       final json = jsonDecode(responseBody) as Map<String, dynamic>;
@@ -274,9 +282,17 @@ $question
       final responseBody = await response.transform(utf8.decoder).join();
 
       if (response.statusCode != 200) {
-        final error = jsonDecode(responseBody);
-        final message = error['error']?['message'] ?? responseBody;
-        return '❌ Claude 错误 (${response.statusCode}): $message';
+        String message;
+        try {
+          final error = jsonDecode(responseBody);
+          message = error['error']?['message'] ?? responseBody;
+        } on FormatException {
+          message = responseBody.length > 200
+              ? responseBody.substring(0, 200)
+              : responseBody;
+        }
+        return '❌ Claude 错误 (${response.statusCode}): $message\n\n'
+            '请检查 API 地址是否正确: ${provider.baseUrl}/v1/messages';
       }
 
       final json = jsonDecode(responseBody) as Map<String, dynamic>;
