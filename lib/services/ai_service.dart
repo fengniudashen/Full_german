@@ -94,6 +94,94 @@ $question
 ''');
   }
 
+  /// Generate example sentences using a word/phrase.
+  Future<String> makeSentences(String wordOrPhrase, String? context) async {
+    final ctxPart = context != null ? '\n**来源句子：** $context' : '';
+    return _chat('''
+你是一位专业的德语教师。请用以下德语词汇/片段造句：
+
+**词汇/片段：** $wordOrPhrase$ctxPart
+
+请提供：
+1. **5个由简到难的例句**（附中文翻译）
+2. **涵盖不同场景**（日常、正式、新闻、口语等）
+3. **标注关键语法点**（如果涉及特殊语法结构）
+
+请用简洁明了的中文和德语对照回答。
+''');
+  }
+
+  /// Find synonyms for a word/phrase.
+  Future<String> synonyms(String wordOrPhrase, String? context) async {
+    final ctxPart = context != null ? '\n**上下文：** $context' : '';
+    return _chat('''
+你是一位专业的德语教师。请给出以下德语词汇/表达的近义词和近义表达：
+
+**词汇/表达：** $wordOrPhrase$ctxPart
+
+请提供：
+1. **近义词列表**（4-6个，附中文释义）
+2. **各词的细微差别**（语义、语气、使用场景的区别）
+3. **替换例句**（用近义词改写原句或造新句，2-3个）
+4. **常见搭配差异**（各近义词的典型搭配）
+
+请用简洁明了的中文回答，所有德语词附上中文释义。
+''');
+  }
+
+  /// Find antonyms for a word/phrase.
+  Future<String> antonyms(String wordOrPhrase, String? context) async {
+    final ctxPart = context != null ? '\n**上下文：** $context' : '';
+    return _chat('''
+你是一位专业的德语教师。请给出以下德语词汇/表达的反义词和对立表达：
+
+**词汇/表达：** $wordOrPhrase$ctxPart
+
+请提供：
+1. **反义词列表**（3-5个，附中文释义）
+2. **用法对比**（反义词之间的语义差异和使用场景）
+3. **对比例句**（用反义词造对比句，2-3组）
+4. **相关词族**（同根词、词组搭配中的对立用法）
+
+请用简洁明了的中文回答，所有德语词附上中文释义。
+''');
+  }
+
+  /// Explain conjugation / declension of a word.
+  Future<String> conjugate(String word, String? context) async {
+    final ctxPart = context != null ? '\n**上下文：** $context' : '';
+    return _chat('''
+你是一位专业的德语教师。请给出以下德语词汇的完整变形表：
+
+**词汇：** $word$ctxPart
+
+请根据词性提供：
+- **动词**：现在时/过去时/现在完成时的完整变位，命令式，第二虚拟式
+- **名词**：性/单复数/四格变化表
+- **形容词**：比较级/最高级，强/弱/混合变格表
+
+请用表格或列表形式清晰展示。
+''');
+  }
+
+  /// Rewrite / paraphrase a sentence in different styles.
+  Future<String> rewrite(String sentence) async {
+    return _chat('''
+你是一位专业的德语教师。请用不同方式改写以下德语句子：
+
+**原句：** $sentence
+
+请提供以下改写版本：
+1. **口语化**（日常会话风格）
+2. **正式/书面**（正式信件或学术风格）
+3. **简化版**（更简单的词汇和句式，适合初学者）
+4. **新闻体**（新闻报道风格）
+5. **被动语态**（如果原句是主动语态，反之亦然）
+
+每个版本附上中文翻译和简要说明改写要点。
+''');
+  }
+
   Future<String> _chat(String prompt) async {
     if (apiKey.isEmpty) {
       return '⚠️ 请先在设置中配置 DeepSeek API Key。\n\n'

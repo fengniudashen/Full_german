@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../models/study_project.dart';
 import '../models/study_sentence.dart';
 import '../providers/app_state.dart';
+import '../services/ai_service.dart';
 import '../services/text_comparator.dart';
 import '../theme/app_theme.dart';
 import '../utils/time_format.dart';
@@ -44,6 +45,7 @@ class _DictationPageState extends State<DictationPage> {
   bool _loading = true;
   bool _checking = false;
   bool _focusMode = false; // Immersion mode: hide hints & progress
+  bool _showFullText = false; // Reveal full sentence for interactive analysis
   String? _error;
   int _sessionId = 0;
   int _sessionCorrect = 0;
@@ -471,25 +473,186 @@ class _DictationPageState extends State<DictationPage> {
             : '${w[0]}${'·' * (w.length - 2)}${w[w.length - 1]}')
         .join(' ');
 
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        GlassCard(
+          padding: const EdgeInsets.all(14),
+          borderColor: AppTheme.gold.withValues(alpha: 0.3),
+          child: Row(
+            children: [
+              Icon(Icons.lightbulb_outline, color: AppTheme.gold, size: 18),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(hintText,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      letterSpacing: 1.5,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    )),
+              ),
+              // Toggle full text
+              IconButton(
+                icon: Icon(
+                  _showFullText ? Icons.visibility_off : Icons.visibility,
+                  size: 18,
+                ),
+                tooltip: _showFullText ? '隐藏原文' : '显示原文 (点击词汇可AI分析)',
+                onPressed: () => setState(() => _showFullText = !_showFullText),
+              ),
+            ],
+          ),
+        ),
+        // Full interactive text
+        if (_showFullText) ...[
+          const SizedBox(height: 8),
+          _buildInteractiveText(s),
+        ],
+      ],
+    );
+  }
+
+  /// Build interactive text where each word is tappable for AI actions.
+  Widget _buildInteractiveText(StudySentence s) {
+    final theme = Theme.of(context);
+    final words = s.text.split(RegExp(r'\s+'));
+
     return GlassCard(
       padding: const EdgeInsets.all(14),
-      borderColor: AppTheme.gold.withValues(alpha: 0.3),
-      child: Row(
+      borderColor: theme.colorScheme.primary.withValues(alpha: 0.3),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.lightbulb_outline, color: AppTheme.gold, size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(hintText,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  letterSpacing: 1.5,
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurfaceVariant,
-                )),
+          Row(
+            children: [
+              Icon(Icons.touch_app, size: 14, color: theme.colorScheme.primary),
+              const SizedBox(width: 6),
+              Text('点击词汇即可 AI 分析 · 长按框选片段',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  )),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: words.map((word) {
+              return _WordChip(
+                word: word,
+                sentenceContext: s.text,
+                onAiAction: _handleAiAction,
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 10),
+          // Phrase selection: full sentence tap for grammar/translate
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _handleAiAction(
+                    _AiAction.grammar, s.text, s.text,
+                  ),
+                  icon: const Icon(Icons.schema_outlined, size: 16),
+                  label: const Text('整句语法'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 36),
+                    textStyle: const TextStyle(fontSize: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _handleAiAction(
+                    _AiAction.translate, s.text, s.text,
+                  ),
+                  icon: const Icon(Icons.g_translate, size: 16),
+                  label: const Text('整句翻译'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 36),
+                    textStyle: const TextStyle(fontSize: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _handleAiAction(
+                    _AiAction.rewrite, s.text, s.text,
+                  ),
+                  icon: const Icon(Icons.edit_note, size: 16),
+                  label: const Text('改写'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 36),
+                    textStyle: const TextStyle(fontSize: 12),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
+
+  /// Handle an AI action triggered from word/phrase interaction.
+  void _handleAiAction(_AiAction action, String text, String sentenceCtx) {
+    switch (action) {
+      case _AiAction.openAnalysis:
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => AnalysisPage(
+              initialSentence: sentenceCtx,
+              initialWord: text != sentenceCtx ? text : null,
+            ),
+          ),
+        );
+      case _AiAction.lookup:
+      case _AiAction.grammar:
+      case _AiAction.translate:
+      case _AiAction.phrase:
+      case _AiAction.makeSentences:
+      case _AiAction.synonyms:
+      case _AiAction.antonyms:
+      case _AiAction.conjugate:
+      case _AiAction.rewrite:
+        _showAiQuickResult(action, text, sentenceCtx);
+    }
+  }
+
+  /// Show AI result in a bottom sheet without leaving the page.
+  Future<void> _showAiQuickResult(
+      _AiAction action, String text, String sentenceCtx) async {
+    final apiKey = context.read<AppState>().settings.deepseekApiKey;
+    if (apiKey.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('请先在设置中配置 DeepSeek API Key'),
+          action: SnackBarAction(label: '去设置', onPressed: _noOp),
+        ),
+      );
+      return;
+    }
+
+    // Show bottom sheet with loading state
+    if (!mounted) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _AiResultSheet(
+        action: action,
+        text: text,
+        sentenceContext: sentenceCtx,
+        apiKey: apiKey,
+      ),
+    );
+  }
+
+  static void _noOp() {}
 
   Widget _buildAnswerCard() {
     return GlassCard(
@@ -1037,4 +1200,288 @@ class _AudioProgressPainter extends CustomPainter {
       old.progress != progress ||
       old.loopStart != loopStart ||
       old.loopEnd != loopEnd;
+}
+
+// ─── AI Actions ─────────────────────────────────────────────
+
+enum _AiAction {
+  openAnalysis('打开 AI 助手', Icons.auto_awesome),
+  lookup('查词', Icons.translate),
+  grammar('语法分析', Icons.schema_outlined),
+  translate('翻译', Icons.g_translate),
+  phrase('片段解析', Icons.short_text),
+  makeSentences('造句', Icons.edit_note),
+  synonyms('近义词', Icons.swap_horiz),
+  antonyms('反义词', Icons.compare_arrows),
+  conjugate('变形表', Icons.table_chart_outlined),
+  rewrite('改写', Icons.autorenew);
+
+  const _AiAction(this.label, this.icon);
+  final String label;
+  final IconData icon;
+}
+
+/// Tappable word chip that shows a context menu of AI actions.
+class _WordChip extends StatelessWidget {
+  const _WordChip({
+    required this.word,
+    required this.sentenceContext,
+    required this.onAiAction,
+  });
+  final String word;
+  final String sentenceContext;
+  final void Function(_AiAction action, String text, String ctx) onAiAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+      borderRadius: BorderRadius.circular(6),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: () => _showMenu(context),
+        onLongPress: () => _showMenu(context),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          child: Text(
+            word,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showMenu(BuildContext context) {
+    final cleanWord = word.replaceAll(RegExp(r'[.,;:!?"""()–—]'), '').trim();
+    if (cleanWord.isEmpty) return;
+
+    final actions = [
+      _AiAction.lookup,
+      _AiAction.makeSentences,
+      _AiAction.synonyms,
+      _AiAction.antonyms,
+      _AiAction.conjugate,
+      _AiAction.phrase,
+      _AiAction.grammar,
+      _AiAction.translate,
+      _AiAction.openAnalysis,
+    ];
+
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+                child: Row(
+                  children: [
+                    Icon(Icons.touch_app,
+                        size: 20, color: theme.colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      cleanWord,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(),
+              ...actions.map((a) => ListTile(
+                    leading: Icon(a.icon, size: 20),
+                    title: Text(a.label),
+                    dense: true,
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      final input =
+                          a == _AiAction.grammar || a == _AiAction.translate || a == _AiAction.rewrite
+                              ? sentenceContext
+                              : cleanWord;
+                      onAiAction(a, input, sentenceContext);
+                    },
+                  )),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Bottom sheet that fetches & displays AI result inline.
+class _AiResultSheet extends StatefulWidget {
+  const _AiResultSheet({
+    required this.action,
+    required this.text,
+    required this.sentenceContext,
+    required this.apiKey,
+  });
+  final _AiAction action;
+  final String text;
+  final String sentenceContext;
+  final String apiKey;
+
+  @override
+  State<_AiResultSheet> createState() => _AiResultSheetState();
+}
+
+class _AiResultSheetState extends State<_AiResultSheet> {
+  String _result = '';
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetch();
+  }
+
+  Future<void> _fetch() async {
+    final service = AiService(apiKey: widget.apiKey);
+    String result;
+
+    switch (widget.action) {
+      case _AiAction.lookup:
+        result =
+            await service.lookupWord(widget.text, widget.sentenceContext);
+      case _AiAction.grammar:
+        result = await service.analyzeGrammar(widget.text);
+      case _AiAction.translate:
+        result = await service.translate(widget.text);
+      case _AiAction.phrase:
+        result = await service.analyzePhrase(
+            widget.text, widget.sentenceContext);
+      case _AiAction.makeSentences:
+        result = await service.makeSentences(
+            widget.text, widget.sentenceContext);
+      case _AiAction.synonyms:
+        result =
+            await service.synonyms(widget.text, widget.sentenceContext);
+      case _AiAction.antonyms:
+        result =
+            await service.antonyms(widget.text, widget.sentenceContext);
+      case _AiAction.conjugate:
+        result =
+            await service.conjugate(widget.text, widget.sentenceContext);
+      case _AiAction.rewrite:
+        result = await service.rewrite(widget.text);
+      case _AiAction.openAnalysis:
+        result = ''; // Won't reach here
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _result = result;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.3,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (context, scrollCtrl) {
+        return Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 12, 0),
+                child: Row(
+                  children: [
+                    Icon(widget.action.icon,
+                        size: 20, color: theme.colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${widget.action.label}：${widget.text.length > 30 ? '${widget.text.substring(0, 30)}…' : widget.text}',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: theme.colorScheme.primary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (_result.isNotEmpty)
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 18),
+                        tooltip: '复制',
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: _result));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('已复制到剪贴板')),
+                          );
+                        },
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(),
+              // Body
+              Expanded(
+                child: _loading
+                    ? const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 12),
+                            Text('AI 正在分析…'),
+                          ],
+                        ),
+                      )
+                    : ListView(
+                        controller: scrollCtrl,
+                        padding: const EdgeInsets.all(20),
+                        children: [
+                          SelectableText(
+                            _result,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              height: 1.7,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
