@@ -11,12 +11,14 @@ import '../models/practice_session.dart';
 import '../models/study_project.dart';
 import '../models/wrong_word.dart';
 import '../services/csv_exporter.dart';
+import '../services/dictionary_service.dart';
 import '../services/text_parser.dart';
 
 class AppState extends ChangeNotifier {
   AppState(this.database);
 
   final AppDatabase database;
+  final DictionaryService dictionaryService = DictionaryService();
 
   List<StudyProject> _projects = const [];
   List<WrongWord> _wrongWords = const [];

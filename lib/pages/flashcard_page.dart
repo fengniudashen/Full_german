@@ -257,9 +257,19 @@ class _FlashcardPageState extends State<FlashcardPage>
           ),
           const Spacer(),
 
-          // Flashcard
+          // Flashcard — swipe left = not mastered, swipe right = mastered
           GestureDetector(
             onTap: _flip,
+            onHorizontalDragEnd: _showingAnswer
+                ? (details) {
+                    final v = details.primaryVelocity ?? 0;
+                    if (v > 300) {
+                      _markMastered();
+                    } else if (v < -300) {
+                      _markNotMastered();
+                    }
+                  }
+                : null,
             child: AnimatedBuilder(
               animation: _flipAnim,
               builder: (_, __) {
@@ -284,7 +294,7 @@ class _FlashcardPageState extends State<FlashcardPage>
           ),
 
           const SizedBox(height: 16),
-          Text('点击卡片翻转',
+          Text(_showingAnswer ? '← 左滑没记住 · 右滑已掌握 →' : '点击卡片翻转',
               style: theme.textTheme.labelSmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               )),

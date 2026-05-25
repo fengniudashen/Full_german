@@ -124,9 +124,13 @@ class DashboardPage extends StatelessWidget {
               .toList(),
         );
       }
-      return Wrap(
-        spacing: 8,
-        runSpacing: 8,
+      return GridView.count(
+        crossAxisCount: 2,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        childAspectRatio: 2.2,
         children: children,
       );
     });

@@ -1,8 +1,10 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/ai_provider.dart';
 import '../providers/app_state.dart';
+import '../services/dictionary_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/responsive_page.dart';
@@ -34,6 +36,10 @@ class SettingsPage extends StatelessWidget {
               _SectionTitle('AI 助手'),
               const SizedBox(height: 8),
               _AiSettings(state: state),
+              const SizedBox(height: 24),
+              _SectionTitle('词典'),
+              const SizedBox(height: 8),
+              const _DictionaryImportCard(),
               const SizedBox(height: 24),
               _SectionTitle('关于'),
               const SizedBox(height: 8),
@@ -585,6 +591,71 @@ class _AiSettings extends StatelessWidget {
       'doubao' => '访问 console.volcengine.com 获取 API Key',
       _ => '请输入对应平台的 API Key',
     };
+  }
+}
+
+class _DictionaryImportCard extends StatefulWidget {
+  const _DictionaryImportCard();
+
+  @override
+  State<_DictionaryImportCard> createState() => _DictionaryImportCardState();
+}
+
+class _DictionaryImportCardState extends State<_DictionaryImportCard> {
+  int? _importedCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dictService = context.read<AppState>().dictionaryService;
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.menu_book),
+            title: const Text('导入本地词典'),
+            subtitle: Text(
+              dictService.userDictSize > 0
+                  ? '已导入 ${dictService.userDictSize} 个词条'
+                  : '支持 CSV/TSV 格式（每行: 单词\\t释义）',
+            ),
+            trailing: FilledButton.tonal(
+              onPressed: _import,
+              child: const Text('导入'),
+            ),
+          ),
+          if (_importedCount != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 16, bottom: 12),
+              child: Text(
+                '本次导入 $_importedCount 个词条',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppTheme.emerald,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _import() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['csv', 'tsv', 'txt'],
+    );
+    if (result == null || result.files.single.path == null) return;
+    final path = result.files.single.path!;
+    final dictService = context.read<AppState>().dictionaryService;
+    final count = await dictService.importDictionaryFile(path);
+    if (!mounted) return;
+    setState(() => _importedCount = count);
+    if (count > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('成功导入 $count 个词条')),
+      );
+    }
   }
 }
 

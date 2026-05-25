@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'text_comparator.dart';
 
@@ -171,5 +172,53 @@ class DictionaryService {
       partOfSpeech: pos,
       examples: examples.toList(growable: false),
     );
+  }
+
+  // ─── Local dictionary import ───────────────────────────────
+
+  /// User-imported dictionary entries (persisted in-memory per session).
+  final Map<String, DictionaryEntry> _userDict = {};
+
+  int get userDictSize => _userDict.length;
+
+  /// Import a CSV/TSV file: each line = `word<TAB>definition` or `word,definition`.
+  /// Returns number of entries imported.
+  Future<int> importDictionaryFile(String path) async {
+    final file = File(path);
+    if (!await file.exists()) return 0;
+    final lines = await file
+        .openRead()
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .toList();
+    int count = 0;
+    for (final line in lines) {
+      if (line.trim().isEmpty) continue;
+      // Try tab first, then comma
+      String word;
+      String def;
+      final tabIdx = line.indexOf('\t');
+      if (tabIdx > 0) {
+        word = line.substring(0, tabIdx).trim();
+        def = line.substring(tabIdx + 1).trim();
+      } else {
+        final commaIdx = line.indexOf(',');
+        if (commaIdx <= 0) continue;
+        word = line.substring(0, commaIdx).trim();
+        def = line.substring(commaIdx + 1).trim();
+      }
+      if (word.isEmpty || def.isEmpty) continue;
+      final key = TextComparator.dictionaryKey(word);
+      if (key.isEmpty) continue;
+      _userDict[key] = DictionaryEntry(
+        word: key,
+        source: '导入词典',
+        definitions: [def],
+      );
+      count++;
+    }
+    // Also add to cache so lookups hit immediately
+    _cache.addAll(_userDict);
+    return count;
   }
 }
