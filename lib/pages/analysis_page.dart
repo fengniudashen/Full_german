@@ -30,19 +30,20 @@ class _AnalysisPageState extends State<AnalysisPage> {
   String _result = '';
   bool _loading = false;
   _AnalysisMode _mode = _AnalysisMode.grammar;
+  String _sentenceCtx = '';
 
   @override
   void initState() {
     super.initState();
+    _inputCtrl.addListener(() => setState(() {}));
     if (widget.initialSentence != null) {
       _inputCtrl.text = widget.initialSentence!;
+      _sentenceCtx = widget.initialSentence!;
     }
-    // Auto-run analysis if initial data provided
+    // Auto-run analysis only if a specific word was tapped
     if (widget.initialWord != null && widget.initialSentence != null) {
       _mode = _AnalysisMode.word;
       _inputCtrl.text = widget.initialWord!;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _run());
-    } else if (widget.initialSentence != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _run());
     }
   }
@@ -68,6 +69,11 @@ class _AnalysisPageState extends State<AnalysisPage> {
       _result = '';
     });
 
+    // Track sentence context for word lookup
+    if (_mode != _AnalysisMode.word) {
+      _sentenceCtx = text;
+    }
+
     final service = _getService();
     String result;
 
@@ -75,14 +81,14 @@ class _AnalysisPageState extends State<AnalysisPage> {
       case _AnalysisMode.word:
         result = await service.lookupWord(
           text,
-          widget.initialSentence ?? text,
+          _sentenceCtx.isNotEmpty ? _sentenceCtx : text,
         );
       case _AnalysisMode.grammar:
         result = await service.analyzeGrammar(text);
       case _AnalysisMode.translate:
         result = await service.translate(text);
       case _AnalysisMode.phrase:
-        result = await service.analyzePhrase(text, widget.initialSentence);
+        result = await service.analyzePhrase(text, _sentenceCtx.isNotEmpty ? _sentenceCtx : null);
       case _AnalysisMode.pronunciation:
         result = await service.speakingCoach(text);
       case _AnalysisMode.ask:
@@ -201,6 +207,58 @@ class _AnalysisPageState extends State<AnalysisPage> {
                     alignLabelWithHint: true,
                   ),
                 ),
+                // Interactive word chips — click a word to look it up
+                if (_inputCtrl.text.trim().isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text('点击词汇快速查询：',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.outline,
+                      )),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: _inputCtrl.text
+                        .trim()
+                        .split(RegExp(r'\s+'))
+                        .where((w) => w.isNotEmpty)
+                        .map((word) {
+                      final cleanWord =
+                          word.replaceAll(RegExp(r'[.,;:!?"""()–—]'), '').trim();
+                      return Material(
+                        color: theme.colorScheme.primaryContainer
+                            .withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(6),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(6),
+                          onTap: cleanWord.isEmpty
+                              ? null
+                              : () {
+                                  final fullSentence = _inputCtrl.text.trim();
+                                  setState(() {
+                                    _sentenceCtx = fullSentence;
+                                    _mode = _AnalysisMode.word;
+                                    _result = '';
+                                  });
+                                  _inputCtrl.text = cleanWord;
+                                  _run();
+                                },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 5),
+                            child: Text(
+                              word,
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 FilledButton.icon(
                   onPressed: _loading ? null : _run,
