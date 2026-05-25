@@ -214,7 +214,7 @@ $question
     try {
       final uri = Uri.parse('${provider.baseUrl}/v1/chat/completions');
       final request = await client.postUrl(uri);
-      request.headers.set('Content-Type', 'application/json');
+      request.headers.set('Content-Type', 'application/json; charset=utf-8');
       request.headers.set('Authorization', 'Bearer ${provider.apiKey}');
 
       final body = jsonEncode({
@@ -225,7 +225,7 @@ $question
         'temperature': 0.3,
         'max_tokens': 2000,
       });
-      request.write(body);
+      request.add(utf8.encode(body));
 
       final response = await request.close();
       final responseBody = await response.transform(utf8.decoder).join();
@@ -257,7 +257,7 @@ $question
     try {
       final uri = Uri.parse('${provider.baseUrl}/v1/messages');
       final request = await client.postUrl(uri);
-      request.headers.set('Content-Type', 'application/json');
+      request.headers.set('Content-Type', 'application/json; charset=utf-8');
       request.headers.set('x-api-key', provider.apiKey);
       request.headers.set('anthropic-version', '2023-06-01');
 
@@ -268,7 +268,7 @@ $question
           {'role': 'user', 'content': prompt},
         ],
       });
-      request.write(body);
+      request.add(utf8.encode(body));
 
       final response = await request.close();
       final responseBody = await response.transform(utf8.decoder).join();
