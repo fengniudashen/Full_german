@@ -141,7 +141,7 @@ class _ProjectCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title + status
+          // Title + status + menu
           Row(
             children: [
               Expanded(
@@ -154,8 +154,27 @@ class _ProjectCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
               StatusBadge.fromStatus(project.statusLabel),
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert, size: 20,
+                    color: theme.colorScheme.onSurfaceVariant),
+                itemBuilder: (_) => [
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('删除项目', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
+                  ),
+                ],
+                onSelected: (v) {
+                  if (v == 'delete') _confirmDelete(context);
+                },
+              ),
             ],
           ),
           const SizedBox(height: 6),
