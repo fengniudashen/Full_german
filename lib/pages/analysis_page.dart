@@ -54,8 +54,8 @@ class _AnalysisPageState extends State<AnalysisPage> {
   }
 
   AiService _getService() {
-    final apiKey = context.read<AppState>().settings.deepseekApiKey;
-    return AiService(apiKey: apiKey);
+    final provider = context.read<AppState>().settings.activeProvider;
+    return AiService(provider: provider);
   }
 
   Future<void> _run() async {
@@ -110,7 +110,32 @@ class _AnalysisPageState extends State<AnalysisPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AI 德语助手'),
+        title: Consumer<AppState>(
+          builder: (_, state, __) {
+            final p = state.settings.activeProvider;
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('AI 德语助手'),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    p.name.split(' ').first,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_outlined),
@@ -241,19 +266,18 @@ class _AnalysisPageState extends State<AnalysisPage> {
 
   Future<void> _showApiKeyDialog(BuildContext context) async {
     final appState = context.read<AppState>();
-    final ctrl = TextEditingController(
-      text: appState.settings.deepseekApiKey,
-    );
+    final provider = appState.settings.activeProvider;
+    final ctrl = TextEditingController(text: provider.apiKey);
 
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('设置 DeepSeek API Key'),
+        title: Text('${provider.name} API Key'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('请输入你的 DeepSeek API Key：'),
+            Text('当前模型: ${provider.name} (${provider.model})'),
             const SizedBox(height: 8),
             TextField(
               controller: ctrl,
@@ -265,7 +289,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              '获取方式：访问 platform.deepseek.com 注册并创建 API Key',
+              '可在设置页面切换 AI 模型和管理所有 API Key',
               style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
                     color: Theme.of(ctx).colorScheme.onSurfaceVariant,
                   ),
@@ -279,7 +303,8 @@ class _AnalysisPageState extends State<AnalysisPage> {
           ),
           FilledButton(
             onPressed: () async {
-              await appState.updateDeepseekApiKey(ctrl.text.trim());
+              await appState.updateProviderKey(
+                  provider.id, ctrl.text.trim());
               if (ctx.mounted) Navigator.of(ctx).pop();
             },
             child: const Text('保存'),

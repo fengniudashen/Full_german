@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/ai_provider.dart';
 import '../providers/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
@@ -258,27 +259,159 @@ class _AiSettings extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final hasKey = state.settings.deepseekApiKey.isNotEmpty;
+    final activeId = state.settings.activeProviderId;
+    final activeProvider = state.settings.activeProvider;
 
     return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ListTile(
-            leading: Icon(Icons.auto_awesome,
-                color: hasKey ? AppTheme.emerald : theme.colorScheme.onSurfaceVariant),
-            title: const Text('DeepSeek API Key'),
-            subtitle: Text(hasKey ? '已配置 ✓' : '未配置 — 需要 API Key 才能使用 AI 功能'),
-            trailing: FilledButton.tonal(
-              onPressed: () => _editApiKey(context),
-              child: Text(hasKey ? '修改' : '配置'),
-            ),
+          // Active provider selector
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Text('当前 AI 模型',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                )),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: DropdownButton<String>(
+              value: activeId,
+              isExpanded: true,
+              underline: const SizedBox.shrink(),
+              items: AiProvider.presets.map((p) {
+                final key = state.settings.providerKeys[p.id] ??
+                    (p.id == 'deepseek' ? state.settings.deepseekApiKey : '');
+                final hasKey = key.isNotEmpty;
+                return DropdownMenuItem(
+                  value: p.id,
+                  child: Row(
+                    children: [
+                      Icon(
+                        hasKey ? Icons.check_circle : Icons.circle_outlined,
+                        size: 16,
+                        color: hasKey ? AppTheme.emerald : theme.colorScheme.outlineVariant,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(p.name),
+                      if (p.id == activeId)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text('使用中',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onPrimaryContainer,
+                                  fontWeight: FontWeight.w700,
+                                )),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }).toList(),
+              onChanged: (id) {
+                if (id != null) state.setActiveProvider(id);
+              },
+            ),
+          ),
+          if (activeProvider.hasKey)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              child: Text(
+                '模型: ${activeProvider.model}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          const Divider(height: 20),
+
+          // Provider key list
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text('API Key 管理',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                )),
+          ),
+          ...AiProvider.presets.map((p) {
+            final key = state.settings.providerKeys[p.id] ??
+                (p.id == 'deepseek' ? state.settings.deepseekApiKey : '');
+            final hasKey = key.isNotEmpty;
+            return ListTile(
+              dense: true,
+              leading: Icon(
+                hasKey ? Icons.vpn_key : Icons.vpn_key_off_outlined,
+                size: 18,
+                color: hasKey ? AppTheme.emerald : theme.colorScheme.outlineVariant,
+              ),
+              title: Text(p.name, style: const TextStyle(fontSize: 14)),
+              subtitle: Text(
+                hasKey ? '已配置 ✓' : '未配置',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: hasKey
+                      ? AppTheme.emerald
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (p.id != activeId && hasKey)
+                    TextButton(
+                      onPressed: () => state.setActiveProvider(p.id),
+                      child: const Text('切换', style: TextStyle(fontSize: 12)),
+                    ),
+                  FilledButton.tonal(
+                    onPressed: () => _editProviderKey(context, p),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(56, 32),
+                      textStyle: const TextStyle(fontSize: 12),
+                    ),
+                    child: Text(hasKey ? '修改' : '配置'),
+                  ),
+                ],
+              ),
+            );
+          }),
+
+          // Custom provider URL (only when custom is selected)
+          if (activeId == 'custom') ...[
+            const Divider(height: 20),
+            ListTile(
+              dense: true,
+              leading: const Icon(Icons.link, size: 18),
+              title: const Text('自定义 API 地址', style: TextStyle(fontSize: 14)),
+              subtitle: Text(
+                state.settings.customProviderUrl.isEmpty
+                    ? '未设置'
+                    : state.settings.customProviderUrl,
+                style: const TextStyle(fontSize: 12),
+              ),
+              trailing: FilledButton.tonal(
+                onPressed: () => _editCustomProvider(context),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(56, 32),
+                  textStyle: const TextStyle(fontSize: 12),
+                ),
+                child: const Text('设置'),
+              ),
+            ),
+          ],
+
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             child: Text(
-              '访问 platform.deepseek.com 注册并获取 API Key。\n'
-              'AI 功能支持查词、语法分析、翻译、片段解析和自由提问。',
+              'AI 功能支持查词、造句、近义词、反义词、变形表、语法分析、翻译、改写等。\n'
+              '可自由切换不同的 AI 模型。',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -289,38 +422,149 @@ class _AiSettings extends StatelessWidget {
     );
   }
 
-  Future<void> _editApiKey(BuildContext context) async {
-    final ctrl = TextEditingController(
-      text: state.settings.deepseekApiKey,
+  Future<void> _editProviderKey(BuildContext context, AiProvider preset) async {
+    final currentKey = state.settings.providerKeys[preset.id] ??
+        (preset.id == 'deepseek' ? state.settings.deepseekApiKey : '');
+    final keyCtrl = TextEditingController(text: currentKey);
+    final modelCtrl = TextEditingController(
+      text: state.settings.providerModels[preset.id] ?? '',
     );
-    final result = await showDialog<String>(
+
+    final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('DeepSeek API Key'),
-        content: TextField(
-          controller: ctrl,
-          obscureText: true,
-          decoration: const InputDecoration(
-            hintText: 'sk-...',
-            border: OutlineInputBorder(),
-          ),
+        title: Text('${preset.name} 配置'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: keyCtrl,
+              obscureText: true,
+              decoration: InputDecoration(
+                labelText: 'API Key',
+                hintText: preset.id == 'claude' ? 'sk-ant-...' : 'sk-...',
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: modelCtrl,
+              decoration: InputDecoration(
+                labelText: '模型名称 (可选)',
+                hintText: '默认: ${preset.defaultModel}',
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _getProviderHint(preset.id),
+              style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
+            onPressed: () => Navigator.of(ctx).pop(false),
             child: const Text('取消'),
           ),
           FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(ctrl.text.trim()),
+            onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('保存'),
           ),
         ],
       ),
     );
-    ctrl.dispose();
-    if (result != null && context.mounted) {
-      await state.updateDeepseekApiKey(result);
+
+    if (result == true && context.mounted) {
+      await state.updateProviderKey(preset.id, keyCtrl.text.trim());
+      final model = modelCtrl.text.trim();
+      if (model.isNotEmpty) {
+        await state.updateProviderModel(preset.id, model);
+      }
     }
+    keyCtrl.dispose();
+    modelCtrl.dispose();
+  }
+
+  Future<void> _editCustomProvider(BuildContext context) async {
+    final urlCtrl = TextEditingController(
+      text: state.settings.customProviderUrl,
+    );
+    final nameCtrl = TextEditingController(
+      text: state.settings.customProviderName,
+    );
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('自定义 AI 服务'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: urlCtrl,
+              decoration: const InputDecoration(
+                labelText: 'API 地址',
+                hintText: 'https://your-api.example.com',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: nameCtrl,
+              decoration: const InputDecoration(
+                labelText: '显示名称',
+                hintText: '我的 AI 服务',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '需要兼容 OpenAI Chat Completions API 格式。\n'
+              'API 地址应指向 /v1/chat/completions 的上级路径。',
+              style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true && context.mounted) {
+      await state.updateCustomProvider(
+        urlCtrl.text.trim(),
+        nameCtrl.text.trim(),
+      );
+    }
+    urlCtrl.dispose();
+    nameCtrl.dispose();
+  }
+
+  String _getProviderHint(String id) {
+    return switch (id) {
+      'deepseek' => '访问 platform.deepseek.com 获取 API Key',
+      'openai' => '访问 platform.openai.com 获取 API Key',
+      'claude' => '访问 console.anthropic.com 获取 API Key',
+      'minimax' => '访问 platform.minimaxi.com 获取 API Key',
+      'glm' => '访问 open.bigmodel.cn 获取 API Key',
+      'qwen' => '访问 dashscope.console.aliyun.com 获取 API Key',
+      'doubao' => '访问 console.volcengine.com 获取 API Key',
+      _ => '请输入对应平台的 API Key',
+    };
   }
 }
 

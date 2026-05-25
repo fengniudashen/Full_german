@@ -125,7 +125,52 @@ class AppState extends ChangeNotifier {
 
   Future<void> updateDeepseekApiKey(String key) async {
     await database.saveSetting('deepseek_api_key', key);
-    _settings = _settings.copyWith(deepseekApiKey: key);
+    // Also save to provider keys for new system
+    await database.saveSetting('ai_deepseek_key', key);
+    final keys = Map<String, String>.from(_settings.providerKeys);
+    keys['deepseek'] = key;
+    _settings = _settings.copyWith(deepseekApiKey: key, providerKeys: keys);
+    notifyListeners();
+  }
+
+  /// Set API key for a specific provider.
+  Future<void> updateProviderKey(String providerId, String key) async {
+    await database.saveSetting('ai_${providerId}_key', key);
+    // Also update legacy key for backward compatibility
+    if (providerId == 'deepseek') {
+      await database.saveSetting('deepseek_api_key', key);
+      _settings = _settings.copyWith(deepseekApiKey: key);
+    }
+    final keys = Map<String, String>.from(_settings.providerKeys);
+    keys[providerId] = key;
+    _settings = _settings.copyWith(providerKeys: keys);
+    notifyListeners();
+  }
+
+  /// Set active AI provider.
+  Future<void> setActiveProvider(String providerId) async {
+    await database.saveSetting('ai_active_provider', providerId);
+    _settings = _settings.copyWith(activeProviderId: providerId);
+    notifyListeners();
+  }
+
+  /// Set custom model for a provider.
+  Future<void> updateProviderModel(String providerId, String model) async {
+    await database.saveSetting('ai_${providerId}_model', model);
+    final models = Map<String, String>.from(_settings.providerModels);
+    models[providerId] = model;
+    _settings = _settings.copyWith(providerModels: models);
+    notifyListeners();
+  }
+
+  /// Set custom provider URL and name.
+  Future<void> updateCustomProvider(String url, String name) async {
+    await database.saveSetting('ai_custom_url', url);
+    await database.saveSetting('ai_custom_name', name);
+    _settings = _settings.copyWith(
+      customProviderUrl: url,
+      customProviderName: name,
+    );
     notifyListeners();
   }
 

@@ -1,13 +1,26 @@
 import 'dart:convert';
 import 'dart:io';
 
-/// AI service using DeepSeek API for grammar analysis, translation, etc.
-class AiService {
-  AiService({required this.apiKey, this.baseUrl = 'https://api.deepseek.com'});
+import '../models/ai_provider.dart';
 
-  final String apiKey;
-  final String baseUrl;
-  static const _model = 'deepseek-chat';
+/// AI service supporting multiple providers (DeepSeek, OpenAI, Claude, etc.)
+class AiService {
+  AiService({required this.provider});
+
+  /// Legacy constructor for backward compatibility.
+  factory AiService.fromKey({required String apiKey}) {
+    return AiService(
+      provider: AiProvider(
+        id: 'deepseek',
+        name: 'DeepSeek',
+        baseUrl: 'https://api.deepseek.com',
+        defaultModel: 'deepseek-chat',
+        apiKey: apiKey,
+      ),
+    );
+  }
+
+  final AiProvider provider;
 
   /// Look up a word with its sentence context.
   Future<String> lookupWord(String word, String sentenceContext) async {
@@ -183,20 +196,29 @@ $question
   }
 
   Future<String> _chat(String prompt) async {
-    if (apiKey.isEmpty) {
-      return '⚠️ 请先在设置中配置 DeepSeek API Key。\n\n'
-          '获取方式：访问 https://platform.deepseek.com 注册并创建 API Key。';
+    if (!provider.hasKey) {
+      return '⚠️ 请先在设置中配置 ${provider.name} 的 API Key。\n\n'
+          '当前选择的 AI 模型：${provider.name} (${provider.model})';
     }
 
+    // Route to appropriate API format
+    if (provider.id == 'claude') {
+      return _chatClaude(prompt);
+    }
+    return _chatOpenAI(prompt);
+  }
+
+  /// OpenAI-compatible API call (works for DeepSeek, OpenAI, MiniMax, GLM, Qwen, Doubao, etc.)
+  Future<String> _chatOpenAI(String prompt) async {
     final client = HttpClient();
     try {
-      final uri = Uri.parse('$baseUrl/v1/chat/completions');
+      final uri = Uri.parse('${provider.baseUrl}/v1/chat/completions');
       final request = await client.postUrl(uri);
       request.headers.set('Content-Type', 'application/json');
-      request.headers.set('Authorization', 'Bearer $apiKey');
+      request.headers.set('Authorization', 'Bearer ${provider.apiKey}');
 
       final body = jsonEncode({
-        'model': _model,
+        'model': provider.model,
         'messages': [
           {'role': 'user', 'content': prompt},
         ],
@@ -210,16 +232,59 @@ $question
 
       if (response.statusCode != 200) {
         final error = jsonDecode(responseBody);
-        final message = error['error']?['message'] ?? '未知错误';
-        return '❌ API 错误 (${response.statusCode}): $message';
+        final message = error['error']?['message'] ?? responseBody;
+        return '❌ ${provider.name} 错误 (${response.statusCode}): $message';
       }
 
       final json = jsonDecode(responseBody) as Map<String, dynamic>;
       final choices = json['choices'] as List<dynamic>?;
       if (choices == null || choices.isEmpty) {
-        return '❌ 无响应内容。';
+        return '❌ ${provider.name} 无响应内容。';
       }
       return (choices[0]['message']['content'] as String).trim();
+    } on SocketException catch (e) {
+      return '❌ 网络错误: $e\n\n请检查网络连接。';
+    } catch (e) {
+      return '❌ 请求失败: $e';
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Claude (Anthropic) API call — uses Messages API format.
+  Future<String> _chatClaude(String prompt) async {
+    final client = HttpClient();
+    try {
+      final uri = Uri.parse('${provider.baseUrl}/v1/messages');
+      final request = await client.postUrl(uri);
+      request.headers.set('Content-Type', 'application/json');
+      request.headers.set('x-api-key', provider.apiKey);
+      request.headers.set('anthropic-version', '2023-06-01');
+
+      final body = jsonEncode({
+        'model': provider.model,
+        'max_tokens': 2000,
+        'messages': [
+          {'role': 'user', 'content': prompt},
+        ],
+      });
+      request.write(body);
+
+      final response = await request.close();
+      final responseBody = await response.transform(utf8.decoder).join();
+
+      if (response.statusCode != 200) {
+        final error = jsonDecode(responseBody);
+        final message = error['error']?['message'] ?? responseBody;
+        return '❌ Claude 错误 (${response.statusCode}): $message';
+      }
+
+      final json = jsonDecode(responseBody) as Map<String, dynamic>;
+      final content = json['content'] as List<dynamic>?;
+      if (content == null || content.isEmpty) {
+        return '❌ Claude 无响应内容。';
+      }
+      return (content[0]['text'] as String).trim();
     } on SocketException catch (e) {
       return '❌ 网络错误: $e\n\n请检查网络连接。';
     } catch (e) {

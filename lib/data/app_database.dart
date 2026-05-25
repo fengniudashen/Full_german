@@ -191,13 +191,39 @@ class AppDatabase extends GeneratedDatabase {
   Future<AppSettings> getSettings() async {
     final rows = await customSelect('SELECT key, value FROM settings').get();
     final map = {for (final r in rows) r.read<String>('key'): r.read<String>('value')};
+
+    // Parse provider keys: ai_<id>_key → { id: key }
+    final providerKeys = <String, String>{};
+    final providerModels = <String, String>{};
+    for (final entry in map.entries) {
+      final match = RegExp(r'^ai_(.+)_key$').firstMatch(entry.key);
+      if (match != null && entry.value.isNotEmpty) {
+        providerKeys[match.group(1)!] = entry.value;
+      }
+      final modelMatch = RegExp(r'^ai_(.+)_model$').firstMatch(entry.key);
+      if (modelMatch != null && entry.value.isNotEmpty) {
+        providerModels[modelMatch.group(1)!] = entry.value;
+      }
+    }
+
+    // Migrate legacy deepseek_api_key to provider keys
+    final legacyKey = map['deepseek_api_key'] ?? '';
+    if (legacyKey.isNotEmpty && !providerKeys.containsKey('deepseek')) {
+      providerKeys['deepseek'] = legacyKey;
+    }
+
     return AppSettings(
       themeMode: map['theme_mode'] ?? 'system',
       playbackSpeed: double.tryParse(map['playback_speed'] ?? '') ?? 1.0,
       autoAdvance: map['auto_advance'] != 'false',
       showHints: map['show_hints'] == 'true',
       dailyGoal: int.tryParse(map['daily_goal'] ?? '') ?? 20,
-      deepseekApiKey: map['deepseek_api_key'] ?? '',
+      deepseekApiKey: legacyKey,
+      activeProviderId: map['ai_active_provider'] ?? 'deepseek',
+      providerKeys: providerKeys,
+      providerModels: providerModels,
+      customProviderUrl: map['ai_custom_url'] ?? '',
+      customProviderName: map['ai_custom_name'] ?? '',
     );
   }
 

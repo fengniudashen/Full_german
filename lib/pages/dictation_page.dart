@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 
+import '../models/ai_provider.dart';
 import '../models/study_project.dart';
 import '../models/study_sentence.dart';
 import '../providers/app_state.dart';
@@ -626,12 +627,11 @@ class _DictationPageState extends State<DictationPage> {
   /// Show AI result in a bottom sheet without leaving the page.
   Future<void> _showAiQuickResult(
       _AiAction action, String text, String sentenceCtx) async {
-    final apiKey = context.read<AppState>().settings.deepseekApiKey;
-    if (apiKey.isEmpty) {
+    final provider = context.read<AppState>().settings.activeProvider;
+    if (!provider.hasKey) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('请先在设置中配置 DeepSeek API Key'),
-          action: SnackBarAction(label: '去设置', onPressed: _noOp),
+        SnackBar(
+          content: Text('请先在设置中配置 ${provider.name} 的 API Key'),
         ),
       );
       return;
@@ -647,12 +647,10 @@ class _DictationPageState extends State<DictationPage> {
         action: action,
         text: text,
         sentenceContext: sentenceCtx,
-        apiKey: apiKey,
+        provider: provider,
       ),
     );
   }
-
-  static void _noOp() {}
 
   Widget _buildAnswerCard() {
     return GlassCard(
@@ -1326,12 +1324,12 @@ class _AiResultSheet extends StatefulWidget {
     required this.action,
     required this.text,
     required this.sentenceContext,
-    required this.apiKey,
+    required this.provider,
   });
   final _AiAction action;
   final String text;
   final String sentenceContext;
-  final String apiKey;
+  final AiProvider provider;
 
   @override
   State<_AiResultSheet> createState() => _AiResultSheetState();
@@ -1348,7 +1346,7 @@ class _AiResultSheetState extends State<_AiResultSheet> {
   }
 
   Future<void> _fetch() async {
-    final service = AiService(apiKey: widget.apiKey);
+    final service = AiService(provider: widget.provider);
     String result;
 
     switch (widget.action) {

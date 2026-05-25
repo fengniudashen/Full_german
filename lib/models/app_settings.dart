@@ -1,3 +1,5 @@
+import 'ai_provider.dart';
+
 class AppSettings {
   const AppSettings({
     this.themeMode = 'system',
@@ -6,6 +8,11 @@ class AppSettings {
     this.showHints = false,
     this.dailyGoal = 20,
     this.deepseekApiKey = '',
+    this.activeProviderId = 'deepseek',
+    this.providerKeys = const {},
+    this.providerModels = const {},
+    this.customProviderUrl = '',
+    this.customProviderName = '',
   });
 
   final String themeMode; // 'light' | 'dark' | 'system'
@@ -13,7 +20,60 @@ class AppSettings {
   final bool autoAdvance;
   final bool showHints;
   final int dailyGoal;
-  final String deepseekApiKey;
+  final String deepseekApiKey; // legacy — migrated to providerKeys
+  final String activeProviderId;
+  final Map<String, String> providerKeys;   // id → apiKey
+  final Map<String, String> providerModels; // id → custom model
+  final String customProviderUrl;
+  final String customProviderName;
+
+  /// Get the currently active provider with its config.
+  AiProvider get activeProvider {
+    final preset = AiProvider.presets.firstWhere(
+      (p) => p.id == activeProviderId,
+      orElse: () => AiProvider.presets.first,
+    );
+    final key = providerKeys[activeProviderId] ??
+        (activeProviderId == 'deepseek' ? deepseekApiKey : '');
+    return AiProvider(
+      id: preset.id,
+      name: preset.isCustom
+          ? (customProviderName.isNotEmpty ? customProviderName : preset.name)
+          : preset.name,
+      baseUrl:
+          preset.isCustom && customProviderUrl.isNotEmpty
+              ? customProviderUrl
+              : preset.baseUrl,
+      defaultModel: preset.defaultModel,
+      apiKey: key,
+      customModel: providerModels[activeProviderId],
+      isCustom: preset.isCustom,
+    );
+  }
+
+  /// Get a specific provider by id with its stored config.
+  AiProvider getProvider(String id) {
+    final preset = AiProvider.presets.firstWhere(
+      (p) => p.id == id,
+      orElse: () => AiProvider.presets.first,
+    );
+    final key = providerKeys[id] ??
+        (id == 'deepseek' ? deepseekApiKey : '');
+    return AiProvider(
+      id: preset.id,
+      name: preset.isCustom
+          ? (customProviderName.isNotEmpty ? customProviderName : preset.name)
+          : preset.name,
+      baseUrl:
+          preset.isCustom && customProviderUrl.isNotEmpty
+              ? customProviderUrl
+              : preset.baseUrl,
+      defaultModel: preset.defaultModel,
+      apiKey: key,
+      customModel: providerModels[id],
+      isCustom: preset.isCustom,
+    );
+  }
 
   AppSettings copyWith({
     String? themeMode,
@@ -22,6 +82,11 @@ class AppSettings {
     bool? showHints,
     int? dailyGoal,
     String? deepseekApiKey,
+    String? activeProviderId,
+    Map<String, String>? providerKeys,
+    Map<String, String>? providerModels,
+    String? customProviderUrl,
+    String? customProviderName,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -30,6 +95,11 @@ class AppSettings {
       showHints: showHints ?? this.showHints,
       dailyGoal: dailyGoal ?? this.dailyGoal,
       deepseekApiKey: deepseekApiKey ?? this.deepseekApiKey,
+      activeProviderId: activeProviderId ?? this.activeProviderId,
+      providerKeys: providerKeys ?? this.providerKeys,
+      providerModels: providerModels ?? this.providerModels,
+      customProviderUrl: customProviderUrl ?? this.customProviderUrl,
+      customProviderName: customProviderName ?? this.customProviderName,
     );
   }
 }
