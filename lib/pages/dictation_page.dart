@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -226,6 +227,18 @@ class _DictationPageState extends State<DictationPage> {
               ],
             ),
           ],
+          // Debug info
+          if (_project != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              '🔊 ${_project!.audioPath.split(RegExp(r'[\\/]')).last}  |  '
+              '⏱️ ${s.startMs}ms → ${s.endMs}ms',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                fontSize: 10,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -356,7 +369,37 @@ class _DictationPageState extends State<DictationPage> {
       }
       final sentences = await db.getSentencesForProject(widget.projectId);
       final answers = await db.getLatestDictations(widget.projectId);
-      await _player.setFilePath(project.audioPath);
+
+      // Load audio file with error handling
+      final audioPath = project.audioPath;
+      if (audioPath.isEmpty) {
+        setState(() {
+          _loading = false;
+          _error = '音频文件路径为空。请重新导入音频。';
+        });
+        return;
+      }
+
+      final audioFile = File(audioPath);
+      if (!audioFile.existsSync()) {
+        setState(() {
+          _loading = false;
+          _error = '音频文件不存在：\n$audioPath\n\n请删除此项目后重新下载。';
+        });
+        return;
+      }
+
+      try {
+        await _player.setFilePath(audioPath);
+      } catch (e) {
+        setState(() {
+          _loading = false;
+          _error = '无法加载音频文件：\n$audioPath\n\n'
+              '文件大小：${(audioFile.lengthSync() / 1024).toStringAsFixed(0)} KB\n'
+              '错误：$e';
+        });
+        return;
+      }
 
       // Start session
       _sessionId = await db.createSession(widget.projectId);
@@ -405,12 +448,30 @@ class _DictationPageState extends State<DictationPage> {
 
   Future<void> _playCurrentSentence() async {
     final s = _current;
-    if (s == null || !s.hasValidRange) return;
+    if (s == null || !s.hasValidRange) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(
+            '无法播放：句子没有有效的时间范围 '
+            '(start=${s?.startMs ?? 0}ms, end=${s?.endMs ?? 0}ms)',
+          )),
+        );
+      }
+      return;
+    }
     _cacheAnswer();
     _stopAt = Duration(milliseconds: s.endMs);
-    await _player.pause();
-    await _player.seek(Duration(milliseconds: s.startMs));
-    await _player.play();
+    try {
+      await _player.pause();
+      await _player.seek(Duration(milliseconds: s.startMs));
+      await _player.play();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('播放失败：$e')),
+        );
+      }
+    }
   }
 
   Future<void> _setSpeed(double speed) async {
