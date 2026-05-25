@@ -123,6 +123,12 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updateDeepseekApiKey(String key) async {
+    await database.saveSetting('deepseek_api_key', key);
+    _settings = _settings.copyWith(deepseekApiKey: key);
+    notifyListeners();
+  }
+
   // ─── Projects ───────────────────────────────────────────────
   Future<int> createProject({
     required String name,

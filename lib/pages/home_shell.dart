@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/app_state.dart';
 import '../theme/app_theme.dart';
+import 'analysis_page.dart';
 import 'dashboard_page.dart';
 import 'flashcard_page.dart';
 import 'new_project_page.dart';
@@ -89,6 +90,14 @@ class _HomeShellState extends State<HomeShell> {
             ? 'DeutschFlow'
             : _destinations[_selectedIndex].label),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.auto_awesome),
+            tooltip: 'AI 德语助手',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                  builder: (_) => const AnalysisPage()),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () => Navigator.of(context).push(
@@ -293,13 +302,22 @@ class _DesktopTopBar extends StatelessWidget {
             const SizedBox(width: 12),
           ],
 
-          if (showSearch)
+          if (showSearch) ...[
+            IconButton(
+              icon: const Icon(Icons.auto_awesome),
+              tooltip: 'AI 德语助手',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                    builder: (_) => const AnalysisPage()),
+              ),
+            ),
             IconButton(
               icon: const Icon(Icons.search),
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(builder: (_) => const SearchPage()),
               ),
             ),
+          ],
           if (showCreate) ...[
             const SizedBox(width: 8),
             FilledButton.icon(

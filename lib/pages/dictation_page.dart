@@ -15,6 +15,7 @@ import '../utils/time_format.dart';
 import '../widgets/comparison_result_sheet.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/responsive_page.dart';
+import 'analysis_page.dart';
 import 'shadowing_page.dart';
 
 class DictationPage extends StatefulWidget {
@@ -101,6 +102,22 @@ class _DictationPageState extends State<DictationPage> {
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => ShadowingPage(projectId: widget.projectId),
+                  ),
+                );
+              },
+            ),
+          // AI analysis
+          if (_project != null)
+            IconButton(
+              icon: const Icon(Icons.auto_awesome),
+              tooltip: 'AI 分析 (查词/语法/翻译)',
+              onPressed: () {
+                final sentence = _current?.text;
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => AnalysisPage(
+                      initialSentence: sentence,
+                    ),
                   ),
                 );
               },

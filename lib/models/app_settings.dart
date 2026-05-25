@@ -5,6 +5,7 @@ class AppSettings {
     this.autoAdvance = true,
     this.showHints = false,
     this.dailyGoal = 20,
+    this.deepseekApiKey = '',
   });
 
   final String themeMode; // 'light' | 'dark' | 'system'
@@ -12,6 +13,7 @@ class AppSettings {
   final bool autoAdvance;
   final bool showHints;
   final int dailyGoal;
+  final String deepseekApiKey;
 
   AppSettings copyWith({
     String? themeMode,
@@ -19,6 +21,7 @@ class AppSettings {
     bool? autoAdvance,
     bool? showHints,
     int? dailyGoal,
+    String? deepseekApiKey,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -26,6 +29,7 @@ class AppSettings {
       autoAdvance: autoAdvance ?? this.autoAdvance,
       showHints: showHints ?? this.showHints,
       dailyGoal: dailyGoal ?? this.dailyGoal,
+      deepseekApiKey: deepseekApiKey ?? this.deepseekApiKey,
     );
   }
 }

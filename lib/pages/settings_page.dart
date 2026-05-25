@@ -30,6 +30,10 @@ class SettingsPage extends StatelessWidget {
               const SizedBox(height: 8),
               _PracticeSettings(state: state),
               const SizedBox(height: 24),
+              _SectionTitle('AI 助手'),
+              const SizedBox(height: 8),
+              _AiSettings(state: state),
+              const SizedBox(height: 24),
               _SectionTitle('关于'),
               const SizedBox(height: 8),
               _AboutCard(),
@@ -244,6 +248,79 @@ class _PracticeSettings extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _AiSettings extends StatelessWidget {
+  const _AiSettings({required this.state});
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final hasKey = state.settings.deepseekApiKey.isNotEmpty;
+
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ListTile(
+            leading: Icon(Icons.auto_awesome,
+                color: hasKey ? AppTheme.emerald : theme.colorScheme.onSurfaceVariant),
+            title: const Text('DeepSeek API Key'),
+            subtitle: Text(hasKey ? '已配置 ✓' : '未配置 — 需要 API Key 才能使用 AI 功能'),
+            trailing: FilledButton.tonal(
+              onPressed: () => _editApiKey(context),
+              child: Text(hasKey ? '修改' : '配置'),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Text(
+              '访问 platform.deepseek.com 注册并获取 API Key。\n'
+              'AI 功能支持查词、语法分析、翻译、片段解析和自由提问。',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _editApiKey(BuildContext context) async {
+    final ctrl = TextEditingController(
+      text: state.settings.deepseekApiKey,
+    );
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('DeepSeek API Key'),
+        content: TextField(
+          controller: ctrl,
+          obscureText: true,
+          decoration: const InputDecoration(
+            hintText: 'sk-...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(ctrl.text.trim()),
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (result != null && context.mounted) {
+      await state.updateDeepseekApiKey(result);
+    }
   }
 }
 

@@ -197,6 +197,7 @@ class AppDatabase extends GeneratedDatabase {
       autoAdvance: map['auto_advance'] != 'false',
       showHints: map['show_hints'] == 'true',
       dailyGoal: int.tryParse(map['daily_goal'] ?? '') ?? 20,
+      deepseekApiKey: map['deepseek_api_key'] ?? '',
     );
   }
 
