@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../theme/app_theme.dart';
 import 'dashboard_page.dart';
+import 'flashcard_page.dart';
 import 'new_project_page.dart';
 import 'projects_page.dart';
 import 'search_page.dart';
@@ -62,6 +63,7 @@ class _HomeShellState extends State<HomeShell> {
                     title: _destinations[_selectedIndex].label,
                     showCreate: _selectedIndex == 1,
                     showSearch: true,
+                    showFlashcard: _selectedIndex == 3,
                   ),
                   Expanded(
                     child: AnimatedSwitcher(
@@ -111,7 +113,17 @@ class _HomeShellState extends State<HomeShell> {
               icon: const Icon(Icons.add),
               label: const Text('新建'),
             )
-          : null,
+          : _selectedIndex == 3
+              ? FloatingActionButton.extended(
+                  heroTag: 'flashcard',
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                        builder: (_) => const FlashcardPage()),
+                  ),
+                  icon: const Icon(Icons.style),
+                  label: const Text('闪卡复习'),
+                )
+              : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: (i) => setState(() => _selectedIndex = i),
@@ -221,11 +233,13 @@ class _DesktopTopBar extends StatelessWidget {
     required this.title,
     required this.showCreate,
     required this.showSearch,
+    this.showFlashcard = false,
   });
 
   final String title;
   final bool showCreate;
   final bool showSearch;
+  final bool showFlashcard;
 
   @override
   Widget build(BuildContext context) {
@@ -294,6 +308,17 @@ class _DesktopTopBar extends StatelessWidget {
               ),
               icon: const Icon(Icons.add),
               label: const Text('新建项目'),
+            ),
+          ],
+          if (showFlashcard) ...[
+            const SizedBox(width: 8),
+            FilledButton.tonalIcon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                    builder: (_) => const FlashcardPage()),
+              ),
+              icon: const Icon(Icons.style),
+              label: const Text('闪卡复习'),
             ),
           ],
         ],

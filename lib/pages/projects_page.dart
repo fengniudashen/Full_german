@@ -11,7 +11,9 @@ import '../widgets/glass_card.dart';
 import '../widgets/metric_pill.dart';
 import '../widgets/status_badge.dart';
 import 'dictation_page.dart';
+import 'flashcard_page.dart';
 import 'new_project_page.dart';
+import 'shadowing_page.dart';
 import 'timeline_page.dart';
 
 class ProjectsPage extends StatelessWidget {
@@ -204,7 +206,7 @@ class _ProjectCard extends StatelessWidget {
 
           const SizedBox(height: 10),
 
-          // Bottom stats
+          // Bottom stats + action buttons
           Row(
             children: [
               if (project.dictatedCount > 0) ...[
@@ -224,10 +226,36 @@ class _ProjectCard extends StatelessWidget {
                 const SizedBox(width: 8),
               ],
               const Spacer(),
+              // Shadowing button
+              if (project.timelineCompleted)
+                Tooltip(
+                  message: '跟读模式',
+                  child: InkWell(
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) =>
+                            ShadowingPage(projectId: project.id),
+                      ),
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(Icons.record_voice_over,
+                          size: 18, color: theme.colorScheme.primary),
+                    ),
+                  ),
+                ),
+              const SizedBox(width: 4),
               Icon(Icons.chevron_right,
                   color: theme.colorScheme.onSurfaceVariant),
             ],
           ),
+
+          // Mastery stage indicator
+          if (project.timelineCompleted) ...[
+            const SizedBox(height: 8),
+            _MasteryStageBar(project: project),
+          ],
         ],
       ),
     );
@@ -312,6 +340,74 @@ class _ProgressRow extends StatelessWidget {
             style: theme.textTheme.labelSmall?.copyWith(
                 fontWeight: FontWeight.w700)),
       ],
+    );
+  }
+}
+
+/// 4-stage mastery indicator following the Shang Wenjie method.
+class _MasteryStageBar extends StatelessWidget {
+  const _MasteryStageBar({required this.project});
+  final StudyProject project;
+
+  int get _stage {
+    if (project.dictatedCount == 0) return 0;
+    if (project.dictationProgress < 1.0) return 1; // 听写中
+    if (project.wrongWordCount > 0) return 2; // 解析中
+    return 3; // 已精通
+  }
+
+  static const _stageLabels = ['待听写', '听写中', '解析中', '已精通'];
+  static final _stageColors = [Colors.grey, AppTheme.sky, AppTheme.gold, AppTheme.emerald];
+  static const _stageIcons = [
+    Icons.headphones_outlined,
+    Icons.edit_note,
+    Icons.psychology_outlined,
+    Icons.star,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final stage = _stage;
+
+    return Row(
+      children: List.generate(4, (i) {
+        final active = i <= stage;
+        return Expanded(
+          child: Container(
+            margin: EdgeInsets.only(right: i < 3 ? 4 : 0),
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            decoration: BoxDecoration(
+              color: active
+                  ? _stageColors[i].withValues(alpha: 0.2)
+                  : theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(_stageIcons[i],
+                    size: 10,
+                    color: active
+                        ? _stageColors[i]
+                        : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4)),
+                const SizedBox(width: 2),
+                Text(
+                  _stageLabels[i],
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w400,
+                    color: active
+                        ? _stageColors[i]
+                        : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
     );
   }
 }

@@ -15,6 +15,7 @@ import '../utils/time_format.dart';
 import '../widgets/comparison_result_sheet.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/responsive_page.dart';
+import 'shadowing_page.dart';
 
 class DictationPage extends StatefulWidget {
   const DictationPage({super.key, required this.projectId});
@@ -41,6 +42,7 @@ class _DictationPageState extends State<DictationPage> {
   Duration? _stopAt;
   bool _loading = true;
   bool _checking = false;
+  bool _focusMode = false; // Immersion mode: hide hints & progress
   String? _error;
   int _sessionId = 0;
   int _sessionCorrect = 0;
@@ -80,8 +82,29 @@ class _DictationPageState extends State<DictationPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_project?.name ?? '听写练习'),
+        title: Text(_focusMode ? '专注听写' : (_project?.name ?? '听写练习')),
         actions: [
+          // Focus mode toggle
+          IconButton(
+            icon: Icon(_focusMode
+                ? Icons.visibility_off
+                : Icons.visibility),
+            tooltip: _focusMode ? '退出专注模式' : '专注模式（隐藏提示）',
+            onPressed: () => setState(() => _focusMode = !_focusMode),
+          ),
+          // Shadowing mode
+          if (_project != null)
+            IconButton(
+              icon: const Icon(Icons.record_voice_over),
+              tooltip: '跟读模式',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => ShadowingPage(projectId: widget.projectId),
+                  ),
+                );
+              },
+            ),
           // Speed control
           PopupMenuButton<double>(
             icon: Row(
@@ -143,10 +166,18 @@ class _DictationPageState extends State<DictationPage> {
         children: [
           _buildProgressCard(s),
           const SizedBox(height: 16),
-          if (showHints) ...[_buildHintCard(s), const SizedBox(height: 16)],
+          if (showHints && !_focusMode) ...[
+            _buildHintCard(s),
+            const SizedBox(height: 16),
+          ],
           _buildAnswerCard(),
           const SizedBox(height: 16),
-          _buildNavigation(),
+          if (!_focusMode) _buildNavigation(),
+          // Round indicator
+          if (!_focusMode && s.attemptCount > 0) ...[
+            const SizedBox(height: 12),
+            _buildRoundIndicator(),
+          ],
           const SizedBox(height: 24),
         ],
       ),
@@ -521,6 +552,46 @@ class _DictationPageState extends State<DictationPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildRoundIndicator() {
+    final theme = Theme.of(context);
+    // Calculate round: how many complete passes through all sentences
+    final totalAttempts = _sentences.fold<int>(0, (s, e) => s + e.attemptCount);
+    final round = _sentences.isEmpty
+        ? 1
+        : (totalAttempts / _sentences.length).floor() + 1;
+    final perfectCount =
+        _sentences.where((s) => s.attemptCount > 0 && s.correctCount > 0).length;
+
+    return GlassCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Row(
+        children: [
+          Icon(Icons.loop, size: 16, color: theme.colorScheme.primary),
+          const SizedBox(width: 8),
+          Text('第 $round 轮',
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: theme.colorScheme.primary,
+              )),
+          const SizedBox(width: 16),
+          Icon(Icons.check_circle_outline, size: 14,
+              color: AppTheme.emerald),
+          const SizedBox(width: 4),
+          Text('$perfectCount / ${_sentences.length} 全对',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              )),
+          const Spacer(),
+          Text('尚雯婕法 · 第1步：盲听听写',
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.primary.withValues(alpha: 0.7),
+              )),
+        ],
+      ),
     );
   }
 
