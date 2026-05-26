@@ -13,7 +13,9 @@ import 'timeline_page.dart';
 
 /// A page that lets users import audio from podcast RSS feeds.
 class PodcastPage extends StatefulWidget {
-  const PodcastPage({super.key});
+  const PodcastPage({super.key, this.initialUrl});
+
+  final String? initialUrl;
 
   @override
   State<PodcastPage> createState() => _PodcastPageState();
@@ -53,6 +55,18 @@ class _PodcastPageState extends State<PodcastPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.initialUrl != null && widget.initialUrl!.isNotEmpty) {
+      _urlCtrl.text = widget.initialUrl!;
+      // Auto-fetch after the first frame
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _fetchFeed(widget.initialUrl!);
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _urlCtrl.dispose();
     _textCtrl.dispose();
@@ -74,6 +88,7 @@ class _PodcastPageState extends State<PodcastPage> {
 
     try {
       final response = await http.get(Uri.parse(url.trim()));
+      if (!mounted) return;
       if (response.statusCode != 200) {
         throw Exception('HTTP ${response.statusCode}');
       }
@@ -84,6 +99,7 @@ class _PodcastPageState extends State<PodcastPage> {
         _loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = '获取RSS失败: $e';
         _loading = false;
@@ -148,11 +164,13 @@ class _PodcastPageState extends State<PodcastPage> {
       final filePath = p.join(dir.path, 'podcast_$safeName$ext');
 
       final response = await http.get(Uri.parse(ep.audioUrl));
+      if (!mounted) return;
       if (response.statusCode != 200) {
         throw Exception('下载失败: HTTP ${response.statusCode}');
       }
       await File(filePath).writeAsBytes(response.bodyBytes);
 
+      if (!mounted) return;
       setState(() {
         _selected = ep;
         _downloadedAudioPath = filePath;
@@ -160,6 +178,7 @@ class _PodcastPageState extends State<PodcastPage> {
         _downloading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = '下载失败: $e';
         _downloading = false;

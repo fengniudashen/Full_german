@@ -10,7 +10,9 @@ import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 
 class YoutubePage extends StatefulWidget {
-  const YoutubePage({super.key});
+  const YoutubePage({super.key, this.initialUrl});
+
+  final String? initialUrl;
 
   @override
   State<YoutubePage> createState() => _YoutubePageState();
@@ -53,6 +55,9 @@ class _YoutubePageState extends State<YoutubePage> {
   void initState() {
     super.initState();
     _checkYtDlp();
+    if (widget.initialUrl != null && widget.initialUrl!.isNotEmpty) {
+      _urlCtrl.text = widget.initialUrl!;
+    }
   }
 
   @override

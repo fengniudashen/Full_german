@@ -331,6 +331,38 @@ class _ResourceCard extends StatelessWidget {
                 ),
               ),
             ],
+            // Import button
+            if (resource.canImport) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    if (resource.rssFeed != null) {
+                      Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => PodcastPage(initialUrl: resource.rssFeed),
+                      ));
+                    } else if (resource.youtubeUrl != null) {
+                      Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => YoutubePage(initialUrl: resource.youtubeUrl),
+                      ));
+                    }
+                  },
+                  icon: Icon(
+                    resource.rssFeed != null ? Icons.podcasts : Icons.smart_display,
+                    size: 18,
+                  ),
+                  label: Text(
+                    resource.rssFeed != null ? '一键导入播客' : '导入 YouTube 字幕',
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: resource.color,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -438,6 +470,7 @@ class _Resource {
     required this.level,
     required this.type,
     this.rssFeed,
+    this.youtubeUrl,
     this.chinaAccessible = true,
     this.free = true,
   });
@@ -450,8 +483,11 @@ class _Resource {
   final String level;
   final String type;
   final String? rssFeed;
+  final String? youtubeUrl;
   final bool chinaAccessible;
   final bool free;
+
+  bool get canImport => rssFeed != null || youtubeUrl != null;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -544,10 +580,12 @@ final _videoResources = <_Resource>[
     name: 'Deutsche Welle — Nicos Weg',
     description: '德国之声出品的免费德语视频课程，讲述 Nico 来到德国的故事。A1-B1 三个级别，每级约75集短视频，配有互动练习。制作精良，强烈推荐！',
     url: 'https://learngerman.dw.com/de/nicos-weg/c-36519789',
+    youtubeUrl: 'https://www.youtube.com/playlist?list=PLs7zUO7VPyJ5JOA3m-dI4pLwlGiaNwnv9',
     icon: Icons.play_circle_fill,
     color: Color(0xFF0D47A1),
     level: 'A1-B1',
     type: '视频课程',
+    chinaAccessible: false,
   ),
   const _Resource(
     name: 'Deutsche Welle — Harry (gefangen in der Zeit)',
@@ -577,8 +615,30 @@ final _videoResources = <_Resource>[
     type: '考试备考',
   ),
   const _Resource(
+    name: 'TAGESSCHAU 100 Sekunden',
+    description: '每日100秒新闻精华，YouTube 播放列表。有自动生成的德语字幕，非常适合听写练习。需要科学上网。',
+    url: 'https://www.youtube.com/playlist?list=PLOixzgWxGZAmoeziLaRxdb29FA5FAF2Ty',
+    youtubeUrl: 'https://www.youtube.com/playlist?list=PLOixzgWxGZAmoeziLaRxdb29FA5FAF2Ty',
+    icon: Icons.timer,
+    color: Color(0xFF01579B),
+    level: 'B1-B2',
+    type: 'YouTube',
+    chinaAccessible: false,
+  ),
+  const _Resource(
+    name: 'Easy German (YouTube)',
+    description: '街头采访形式的德语学习频道，采访真实德国人。带德英双语字幕，适合了解日常口语和文化。需要科学上网。',
+    url: 'https://www.youtube.com/@EasyGerman',
+    youtubeUrl: 'https://www.youtube.com/@EasyGerman',
+    icon: Icons.people,
+    color: Color(0xFFE65100),
+    level: 'A2-B2',
+    type: 'YouTube',
+    chinaAccessible: false,
+  ),
+  const _Resource(
     name: 'Deutsche Welle — Das Bandtagebuch',
-    description: 'DW 的乐队日记系列，通过德国乐队 EINSHOCH6 的音乐和视频学习德语。适合喜欢音乐的学习者，B1-B2水平。',
+    description: 'DW 的乐队日记系列，通过德国乐队 EINSHOCH6 的音乐和视频学习德语。适合喜欢音乐的学习者。',
     url: 'https://learngerman.dw.com/de/das-bandtagebuch/c-45001516',
     icon: Icons.music_video,
     color: Color(0xFF1976D2),
