@@ -157,6 +157,7 @@ class _PodcastPageState extends State<PodcastPage> {
 
   Future<void> _downloadEpisode(_Episode ep) async {
     setState(() {
+      _selected = ep;
       _downloading = true;
       _downloadProgress = 0;
       _error = null;
