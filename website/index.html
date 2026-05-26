@@ -281,6 +281,7 @@
       .workflow-steps { grid-template-columns: repeat(2, 1fr); }
       .workflow-steps::before { display: none; }
       .ai-grid { grid-template-columns: repeat(2, 1fr); }
+      .why-grid { grid-template-columns: repeat(2, 1fr); }
       .provider-grid { grid-template-columns: repeat(2, 1fr); }
       .nav-links { display: none; }
     }
@@ -289,6 +290,9 @@
       .gallery-grid { grid-template-columns: 1fr; }
       .workflow-steps { grid-template-columns: 1fr; }
       .ai-grid { grid-template-columns: 1fr; }
+      .why-grid { grid-template-columns: 1fr; }
+      .compare-table { font-size: 0.8rem; }
+      .compare-table th, .compare-table td { padding: 8px 10px; }
       .provider-grid { grid-template-columns: repeat(2, 1fr); }
       .stats-row { gap: 24px; }
       section { padding: 60px 0; }
@@ -346,6 +350,7 @@
     <ul class="nav-links">
       <li><a href="#features">核心功能</a></li>
       <li><a href="#workflow">学习方法</a></li>
+      <li><a href="#why">为什么胜出</a></li>
       <li><a href="#ai">AI 能力</a></li>
       <li><a href="#screenshots">界面展示</a></li>
       <li><a href="#tech">技术栈</a></li>
@@ -486,7 +491,7 @@
 </section>
 
 <!-- Why DeutschFlow -->
-<section style="background: rgba(255,255,255,0.01);">
+<section id="why" style="background: rgba(255,255,255,0.01);">
   <div class="container">
     <div class="section-header fade-in">
       <span class="section-tag">Why DeutschFlow</span>
