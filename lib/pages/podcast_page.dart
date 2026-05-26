@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/app_state.dart';
+import '../services/ai_service.dart';
 import '../services/subtitle_parser.dart';
 import '../services/whisper_service.dart';
 import '../theme/app_theme.dart';
@@ -36,6 +37,7 @@ class _PodcastPageState extends State<PodcastPage> {
   double _downloadProgress = 0;
   bool _transcribing = false;
   double _transcribeProgress = 0;
+  bool _segmenting = false;
   String? _error;
   List<_Episode> _episodes = const [];
   _Episode? _selected;
@@ -357,6 +359,66 @@ class _PodcastPageState extends State<PodcastPage> {
     }
   }
 
+  /// Use LLM to intelligently re-segment the SRT subtitles.
+  Future<void> _aiSegment() async {
+    if (_srtContent == null || _srtContent!.isEmpty) return;
+    final settings = context.read<AppState>().settings;
+    final provider = settings.activeProvider;
+
+    if (!provider.hasKey) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请先在设置中配置 AI API Key')),
+      );
+      return;
+    }
+
+    setState(() {
+      _segmenting = true;
+      _error = null;
+    });
+
+    try {
+      final ai = AiService(provider: provider);
+      final newSrt = await ai.segmentSrt(_srtContent!);
+
+      if (!mounted) return;
+
+      // Parse the improved SRT
+      final entries = SubtitleParser.parseSrt(newSrt);
+      if (entries.isEmpty) {
+        setState(() {
+          _error = 'AI 分句结果为空，请检查 AI 返回内容';
+          _segmenting = false;
+        });
+        return;
+      }
+
+      final text = entries.map((e) => e.text).join('\n');
+
+      setState(() {
+        _srtContent = newSrt;
+        _textCtrl.text = text;
+        _segmenting = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('AI 智能分句完成！共 ${entries.length} 个句段'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'AI 分句失败: $e';
+        _segmenting = false;
+      });
+    }
+  }
+
   Future<void> _createProject() async {
     if (_downloadedAudioPath == null) return;
     final text = _textCtrl.text.trim();
@@ -495,7 +557,7 @@ class _PodcastPageState extends State<PodcastPage> {
                 ),
               ),
             ),
-            if (_srtContent != null)
+            if (_srtContent != null) ...[
               Padding(
                 padding: const EdgeInsets.only(top: 6),
                 child: Text(
@@ -507,6 +569,37 @@ class _PodcastPageState extends State<PodcastPage> {
                   ),
                 ),
               ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _segmenting ? null : _aiSegment,
+                  icon: _segmenting
+                      ? const SizedBox.square(
+                          dimension: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.auto_fix_high, size: 18),
+                  label: Text(_segmenting ? 'AI 分句处理中...' : 'AI 智能分句'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: BorderSide(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.4),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  '使用 AI 合并断句、修正拼写、优化时间戳',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 11,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 4),
             if (_srtContent == null)
               Text(

@@ -291,6 +291,28 @@ $text
       '不要输出任何思考过程或 <think> 标签，直接给出最终答案。'
       '使用 Markdown 格式排版，善用标题、加粗、列表和表格让内容清晰易读。';
 
+  /// Intelligently re-segment SRT subtitle text using LLM.
+  /// Returns properly formatted SRT with corrected sentence boundaries and timestamps.
+  Future<String> segmentSrt(String srtContent) async {
+    const systemMsg =
+        '你是德语字幕处理专家。你的任务是对 SRT 字幕进行智能分句处理。'
+        '不要输出任何思考过程或 <think> 标签，直接输出处理后的 SRT。';
+
+    final prompt = '''请对以下 SRT 字幕进行智能分句处理：
+
+规则：
+1. 将不完整的句子片段合并为完整的德语句子
+2. 合并后的句子使用第一个片段的开始时间和最后一个片段的结束时间
+3. 修正明显的语音识别错误（如拼写、大小写）
+4. 保持 SRT 格式：序号、时间戳（HH:MM:SS,mmm --> HH:MM:SS,mmm）、文本、空行
+5. 只输出处理后的 SRT 内容，不要添加任何说明或注释
+
+原始 SRT：
+$srtContent''';
+
+    return chatRaw(prompt, systemMessage: systemMsg);
+  }
+
   /// Raw chat with custom system message — used for conversation practice.
   Future<String> chatRaw(String prompt, {String? systemMessage}) async {
     if (!provider.hasKey) {
