@@ -224,19 +224,13 @@ class WhisperService {
       stderrEncoding: utf8,
     );
 
-    if (result.exitCode != 0) {
-      final stderr = (result.stderr as String).trim();
-      // Clean up temp
-      try { tempDir.deleteSync(recursive: true); } catch (_) {}
-      throw Exception('whisper.cpp SRT 转写失败 (exit ${result.exitCode}): $stderr');
-    }
-
-    // Read the generated SRT file
+    // Read the generated SRT file (whisper-cli may return non-zero even on success)
     final srtPath = '${p.withoutExtension(tempAudio)}.srt';
     final srtFile = File(srtPath);
     if (!srtFile.existsSync()) {
+      final stderr = (result.stderr as String).trim();
       try { tempDir.deleteSync(recursive: true); } catch (_) {}
-      throw Exception('whisper.cpp 未生成 SRT 文件');
+      throw Exception('whisper.cpp SRT 转写失败 (exit ${result.exitCode}): $stderr');
     }
 
     final srtContent = await srtFile.readAsString(encoding: utf8);
