@@ -10,11 +10,16 @@ import '../widgets/gradient_header.dart';
 import '../widgets/metric_pill.dart';
 import '../widgets/mini_activity_chart.dart';
 import '../widgets/responsive_page.dart';
+import 'bilingual_page.dart';
+import 'daily_page.dart';
+import 'difficulty_page.dart';
 import 'discovery_page.dart';
 import 'achievements_page.dart';
 import 'chat_practice_page.dart';
 import 'podcast_page.dart';
 import 'quick_notes_page.dart';
+import 'sentence_gen_page.dart';
+import 'smart_review_page.dart';
 import 'word_stats_page.dart';
 import 'writing_page.dart';
 
@@ -162,8 +167,16 @@ class DashboardPage extends StatelessWidget {
           () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AchievementsPage()))),
       _QuickAction(Icons.bar_chart, '词频分析', Colors.cyan,
           () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const WordStatsPage()))),
-      _QuickAction(Icons.text_fields, '词海拾遗', AppTheme.emerald,
-          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DiscoveryPage()))),
+      _QuickAction(Icons.today, '每日德语', Colors.deepOrange,
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DailyPage()))),
+      _QuickAction(Icons.analytics, '难度分析', Colors.blueGrey,
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DifficultyPage()))),
+      _QuickAction(Icons.translate, '双语对照', Colors.green.shade700,
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BilingualPage()))),
+      _QuickAction(Icons.auto_awesome, 'AI造句', Colors.pink,
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SentenceGenPage()))),
+      _QuickAction(Icons.psychology, 'AI规划', Colors.purple,
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SmartReviewPage()))),
     ];
 
     return LayoutBuilder(
