@@ -126,8 +126,9 @@ function init() {
            ondragover="onDragOver(event, ${slot.id})"
            ondragleave="onDragLeave(event, ${slot.id})"
            ondrop="onDrop(event, ${slot.id})"
+           oncontextmenu="onRightClick(event, ${slot.id})"
            onclick="browseImage(${slot.id})">
-        <div class="drop-text">拖拽图片到此处<br>或点击选择</div>
+        <div class="drop-text">拖拽 / 点击 / 右键粘贴</div>
       </div>
     `;
     container.appendChild(div);
@@ -182,10 +183,76 @@ function processImage(id, file) {
   reader.readAsDataURL(file);
 }
 
+function processBlob(id, blob, name) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const base64 = reader.result;
+    imageData[id] = { base64, size: blob.size, name };
+
+    const preview = document.getElementById(`preview-${id}`);
+    preview.innerHTML = `<img src="${base64}" alt="位置 ${id}">`;
+
+    const sizeKB = (blob.size / 1024).toFixed(1);
+    document.getElementById(`size-${id}`).textContent = `${name} (${sizeKB} KB)`;
+    document.getElementById(`clear-${id}`).style.display = 'inline-block';
+    document.getElementById(`slot-${id}`).classList.add('has-image');
+
+    updateSaveBtn();
+    setStatus(`已粘贴: 位置 ${id} — ${name}`);
+  };
+  reader.readAsDataURL(blob);
+}
+
+async function onRightClick(e, id) {
+  e.preventDefault();
+  lastActiveSlot = id;
+  try {
+    const items = await navigator.clipboard.read();
+    for (const item of items) {
+      const imgType = item.types.find(t => t.startsWith('image/'));
+      if (imgType) {
+        const blob = await item.getType(imgType);
+        const ext = imgType.split('/')[1] || 'png';
+        processBlob(id, blob, `clipboard_${id}.${ext}`);
+        return;
+      }
+    }
+    setStatus('剪贴板中没有图片，请先截图 (Win+Shift+S)');
+  } catch (err) {
+    setStatus('无法读取剪贴板，请允许浏览器访问剪贴板权限');
+  }
+}
+
+let lastActiveSlot = 1;
+// Ctrl+V global paste
+document.addEventListener('paste', (e) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      const blob = item.getAsFile();
+      if (blob) {
+        const ext = item.type.split('/')[1] || 'png';
+        processBlob(lastActiveSlot, blob, `clipboard_${lastActiveSlot}.${ext}`);
+        setStatus(`已粘贴到位置 ${lastActiveSlot}（Ctrl+V）`);
+      }
+      return;
+    }
+  }
+});
+// Track which slot the mouse is over
+document.addEventListener('mouseover', (e) => {
+  const preview = e.target.closest('.slot-preview');
+  if (preview) {
+    const match = preview.id.match(/preview-(\d+)/);
+    if (match) lastActiveSlot = parseInt(match[1]);
+  }
+});
+
 function clearImage(id) {
   delete imageData[id];
   const preview = document.getElementById(`preview-${id}`);
-  preview.innerHTML = '<div class="drop-text">拖拽图片到此处<br>或点击选择</div>';
+  preview.innerHTML = '<div class="drop-text">拖拽 / 点击 / 右键粘贴</div>';
   document.getElementById(`size-${id}`).textContent = '';
   document.getElementById(`clear-${id}`).style.display = 'none';
   document.getElementById(`slot-${id}`).classList.remove('has-image');
