@@ -27,6 +27,8 @@ class _PodcastPageState extends State<PodcastPage> {
   final _urlCtrl = TextEditingController();
   final _textCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
+  final _scrollCtrl = ScrollController();
+  final _createSectionKey = GlobalKey();
   final WhisperService _whisper = WhisperService();
 
   bool _loading = false;
@@ -78,6 +80,7 @@ class _PodcastPageState extends State<PodcastPage> {
     _urlCtrl.dispose();
     _textCtrl.dispose();
     _nameCtrl.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
   }
 
@@ -204,6 +207,16 @@ class _PodcastPageState extends State<PodcastPage> {
         _nameCtrl.text = ep.title;
         _downloading = false;
         _downloadProgress = 1;
+      });
+
+      // Auto-scroll to creation section
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final ctx = _createSectionKey.currentContext;
+        if (ctx != null) {
+          Scrollable.ensureVisible(ctx,
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeOut);
+        }
       });
     } catch (e) {
       if (!mounted) return;
@@ -418,6 +431,7 @@ class _PodcastPageState extends State<PodcastPage> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 900),
           child: ListView(
+            controller: _scrollCtrl,
             padding: const EdgeInsets.all(16),
             children: [
               // Preset podcasts
@@ -543,6 +557,7 @@ class _PodcastPageState extends State<PodcastPage> {
               if (_downloadedAudioPath != null) ...[
                 const Divider(height: 32),
                 GlassCard(
+                  key: _createSectionKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
