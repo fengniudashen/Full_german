@@ -401,6 +401,150 @@ class _PodcastPageState extends State<PodcastPage> {
     }
   }
 
+  // ─── Create Section Widget ──────────────────────────────────
+
+  Widget _buildCreateSection(ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: GlassCard(
+        key: _createSectionKey,
+        borderColor: theme.colorScheme.primary.withValues(alpha: 0.5),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.green),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '已下载: ${_selected?.title ?? ""}',
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Whisper transcribe buttons (local + cloud)
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _transcribing ? null : _whisperTranscribe,
+                    icon: _transcribing
+                        ? SizedBox.square(
+                            dimension: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              value: _transcribeProgress > 0
+                                  ? _transcribeProgress
+                                  : null,
+                            ),
+                          )
+                        : const Icon(Icons.mic, size: 18),
+                    label: Text(
+                      _transcribing
+                          ? '${(_transcribeProgress * 100).toInt()}%'
+                          : '本地转写',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: BorderSide(
+                        color: AppTheme.emerald.withValues(alpha: 0.4),
+                      ),
+                      foregroundColor: AppTheme.emerald,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _transcribing ? null : _whisperTranscribeCloud,
+                    icon: _transcribing
+                        ? const SizedBox.square(
+                            dimension: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.cloud, size: 18),
+                    label: const Text(
+                      '云端转写',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      backgroundColor: AppTheme.emerald,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                '本地: whisper.cpp 离线 · 云端: OpenAI API',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontSize: 11,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            if (_srtContent != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  '✅ 已生成带时间戳的 SRT 字幕',
+                  style: TextStyle(
+                    color: AppTheme.emerald,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            const SizedBox(height: 4),
+            Text(
+              '或手动粘贴文本：',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _nameCtrl,
+              decoration: const InputDecoration(
+                labelText: '项目名称',
+                prefixIcon: Icon(Icons.drive_file_rename_outline),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _textCtrl,
+              minLines: 6,
+              maxLines: 12,
+              decoration: const InputDecoration(
+                labelText: '德语原文',
+                alignLabelWithHint: true,
+                hintText: '粘贴播客对应的德语文本或转录稿',
+              ),
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _loading ? null : _createProject,
+              icon: const Icon(Icons.check),
+              label: const Text('创建项目'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ─── Build ──────────────────────────────────────────────────
 
   @override
@@ -477,197 +621,62 @@ class _PodcastPageState extends State<PodcastPage> {
                   style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
-                ..._episodes.take(20).map((ep) {
+                ..._episodes.take(20).expand((ep) {
                   final isSelected = _selected == ep;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: GlassCard(
-                      borderColor: isSelected ? theme.colorScheme.primary : null,
-                      onTap: _downloading ? null : () => _downloadEpisode(ep),
-                      child: Row(
-                        children: [
-                          Icon(
-                            isSelected ? Icons.check_circle : Icons.podcasts,
-                            color: isSelected
-                                ? theme.colorScheme.primary
-                                : theme.colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  ep.title,
-                                  style: theme.textTheme.bodyMedium
-                                      ?.copyWith(fontWeight: FontWeight.w600),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                if (ep.pubDate.isNotEmpty)
-                                  Text(
-                                    ep.pubDate,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                              ],
+                  return [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: GlassCard(
+                        borderColor: isSelected ? theme.colorScheme.primary : null,
+                        onTap: _downloading ? null : () => _downloadEpisode(ep),
+                        child: Row(
+                          children: [
+                            Icon(
+                              isSelected ? Icons.check_circle : Icons.podcasts,
+                              color: isSelected
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.onSurfaceVariant,
                             ),
-                          ),
-                          if (_downloading && _selected == ep)
-                            const SizedBox.square(
-                              dimension: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          else if (!isSelected)
-                            Icon(Icons.download,
-                                size: 20,
-                                color: theme.colorScheme.onSurfaceVariant),
-                        ],
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    ep.title,
+                                    style: theme.textTheme.bodyMedium
+                                        ?.copyWith(fontWeight: FontWeight.w600),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (ep.pubDate.isNotEmpty)
+                                    Text(
+                                      ep.pubDate,
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            if (_downloading && _selected == ep)
+                              const SizedBox.square(
+                                dimension: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            else if (!isSelected)
+                              Icon(Icons.download,
+                                  size: 20,
+                                  color: theme.colorScheme.onSurfaceVariant),
+                          ],
+                        ),
                       ),
                     ),
-                  );
+                    // Show creation section right below selected episode
+                    if (isSelected && _downloadedAudioPath != null)
+                      _buildCreateSection(theme),
+                  ];
                 }),
-              ],
-
-              // After download: text input + create
-              if (_downloadedAudioPath != null) ...[
-                const Divider(height: 32),
-                GlassCard(
-                  key: _createSectionKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.check_circle, color: Colors.green),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              '已下载: ${_selected?.title ?? ""}',
-                              style: theme.textTheme.bodyMedium
-                                  ?.copyWith(fontWeight: FontWeight.w600),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      // Whisper transcribe buttons (local + cloud)
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: _transcribing ? null : _whisperTranscribe,
-                              icon: _transcribing
-                                  ? SizedBox.square(
-                                      dimension: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        value: _transcribeProgress > 0
-                                            ? _transcribeProgress
-                                            : null,
-                                      ),
-                                    )
-                                  : const Icon(Icons.mic, size: 18),
-                              label: Text(
-                                _transcribing
-                                    ? '${(_transcribeProgress * 100).toInt()}%'
-                                    : '本地转写',
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                side: BorderSide(
-                                  color: AppTheme.emerald.withValues(alpha: 0.4),
-                                ),
-                                foregroundColor: AppTheme.emerald,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: FilledButton.icon(
-                              onPressed: _transcribing ? null : _whisperTranscribeCloud,
-                              icon: _transcribing
-                                  ? const SizedBox.square(
-                                      dimension: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : const Icon(Icons.cloud, size: 18),
-                              label: const Text(
-                                '云端转写',
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              style: FilledButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                backgroundColor: AppTheme.emerald,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          '本地: whisper.cpp 离线 · 云端: OpenAI API',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontSize: 11,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                      if (_srtContent != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Text(
-                            '✅ 已生成带时间戳的 SRT 字幕',
-                            style: TextStyle(
-                              color: AppTheme.emerald,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '或手动粘贴文本：',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _nameCtrl,
-                        decoration: const InputDecoration(
-                          labelText: '项目名称',
-                          prefixIcon: Icon(Icons.drive_file_rename_outline),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _textCtrl,
-                        minLines: 6,
-                        maxLines: 12,
-                        decoration: const InputDecoration(
-                          labelText: '德语原文',
-                          alignLabelWithHint: true,
-                          hintText: '粘贴播客对应的德语文本或转录稿',
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      FilledButton.icon(
-                        onPressed: _loading ? null : _createProject,
-                        icon: const Icon(Icons.check),
-                        label: const Text('创建项目'),
-                      ),
-                    ],
-                  ),
-                ),
               ],
 
               const SizedBox(height: 40),
