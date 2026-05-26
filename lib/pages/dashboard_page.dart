@@ -16,10 +16,14 @@ import 'difficulty_page.dart';
 import 'discovery_page.dart';
 import 'achievements_page.dart';
 import 'chat_practice_page.dart';
+import 'error_analysis_page.dart';
+import 'grammar_lab_page.dart';
 import 'podcast_page.dart';
+import 'pomodoro_page.dart';
 import 'quick_notes_page.dart';
 import 'sentence_gen_page.dart';
 import 'smart_review_page.dart';
+import 'text_rewrite_page.dart';
 import 'word_stats_page.dart';
 import 'writing_page.dart';
 
@@ -177,6 +181,14 @@ class DashboardPage extends StatelessWidget {
           () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SentenceGenPage()))),
       _QuickAction(Icons.psychology, 'AI规划', Colors.purple,
           () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SmartReviewPage()))),
+      _QuickAction(Icons.science, '语法实验室', Colors.brown,
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const GrammarLabPage()))),
+      _QuickAction(Icons.auto_fix_high, '文本改写', Colors.lime.shade800,
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TextRewritePage()))),
+      _QuickAction(Icons.bug_report, '错误分析', Colors.red.shade700,
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ErrorAnalysisPage()))),
+      _QuickAction(Icons.timer, '番茄钟', Colors.red,
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PomodoroPage()))),
     ];
 
     return LayoutBuilder(
