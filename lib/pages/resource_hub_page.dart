@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/responsive_page.dart';
+import 'youtube_page.dart';
+import 'podcast_page.dart';
 
 /// 资源中心 — 汇集无需科学上网即可访问的德语学习音频/视频资源
 class ResourceHubPage extends StatefulWidget {
@@ -20,7 +22,7 @@ class _ResourceHubPageState extends State<ResourceHubPage>
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 4, vsync: this);
+    _tabCtrl = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -44,6 +46,7 @@ class _ResourceHubPageState extends State<ResourceHubPage>
             Tab(icon: Icon(Icons.video_library), text: '视频课程'),
             Tab(icon: Icon(Icons.menu_book), text: '阅读素材'),
             Tab(icon: Icon(Icons.apps), text: '工具/APP'),
+            Tab(icon: Icon(Icons.download_rounded), text: '导入工具'),
           ],
         ),
       ),
@@ -54,6 +57,7 @@ class _ResourceHubPageState extends State<ResourceHubPage>
           _buildList(_videoResources),
           _buildList(_readingResources),
           _buildList(_toolResources),
+          _buildImportTools(),
         ],
       ),
     );
@@ -65,6 +69,102 @@ class _ResourceHubPageState extends State<ResourceHubPage>
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
         children: resources.map((r) => _ResourceCard(resource: r)).toList(),
+      ),
+    );
+  }
+
+  Widget _buildImportTools() {
+    final theme = Theme.of(context);
+    return ResponsivePage(
+      maxWidth: 900,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // YouTube importer card
+          _ImportToolCard(
+            icon: Icons.smart_display,
+            title: 'YouTube 字幕导入',
+            description: '从 YouTube 视频/播放列表中下载字幕，自动解析为练习句子。需要科学上网环境。',
+            color: const Color(0xFFFF0000),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const YoutubePage()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Podcast importer card
+          _ImportToolCard(
+            icon: Icons.podcasts,
+            title: '播客 RSS 导入',
+            description: '通过 RSS 链接导入播客音频。可以从上方「播客/音频」标签页复制 RSS 链接，粘贴到此处导入。',
+            color: const Color(0xFF7C3AED),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const PodcastPage()),
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Tips section
+          GlassCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.tips_and_updates, color: AppTheme.gold, size: 20),
+                    const SizedBox(width: 8),
+                    Text('使用提示',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _tipRow(theme, '1', '在「播客/音频」标签页中找到喜欢的资源'),
+                _tipRow(theme, '2', '点击 RSS 链接旁的复制按钮'),
+                _tipRow(theme, '3', '进入「播客 RSS 导入」粘贴链接即可导入'),
+                _tipRow(theme, '4', '大陆用户推荐使用 DW (德国之声) 资源，无需科学上网'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tipRow(ThemeData theme, String num, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              color: AppTheme.emerald.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(num,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.emerald,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(text,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -252,6 +352,73 @@ class _ResourceCard extends StatelessWidget {
           fontWeight: FontWeight.w700,
           color: color,
         ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Import tool card widget
+// ═══════════════════════════════════════════════════════════════
+
+class _ImportToolCard extends StatelessWidget {
+  const _ImportToolCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return GlassCard(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: isDark ? 0.2 : 0.1),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: color, size: 28),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(description,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Icon(Icons.chevron_right_rounded,
+            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+          ),
+        ],
       ),
     );
   }
