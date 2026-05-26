@@ -175,30 +175,12 @@ class _PodcastPageState extends State<PodcastPage> {
           .replaceAll(RegExp(r'\s+'), '_');
       final filePath = p.join(dir.path, 'podcast_$safeName$ext');
 
-      // Streaming download with progress
-      final client = http.Client();
-      try {
-        final request = http.Request('GET', Uri.parse(ep.audioUrl));
-        final response = await client.send(request);
-        if (response.statusCode != 200) {
-          throw Exception('下载失败: HTTP ${response.statusCode}');
-        }
-
-        final totalBytes = response.contentLength ?? 0;
-        int receivedBytes = 0;
-        final sink = File(filePath).openWrite();
-
-        await for (final chunk in response.stream) {
-          sink.add(chunk);
-          receivedBytes += chunk.length;
-          if (totalBytes > 0 && mounted) {
-            setState(() => _downloadProgress = receivedBytes / totalBytes);
-          }
-        }
-        await sink.close();
-      } finally {
-        client.close();
+      // Simple download (handles redirects automatically)
+      final response = await http.get(Uri.parse(ep.audioUrl));
+      if (response.statusCode != 200) {
+        throw Exception('下载失败: HTTP ${response.statusCode}');
       }
+      await File(filePath).writeAsBytes(response.bodyBytes);
 
       if (!mounted) return;
       setState(() {
@@ -533,14 +515,9 @@ class _PodcastPageState extends State<PodcastPage> {
                             ),
                           ),
                           if (_downloading && _selected == ep)
-                            SizedBox.square(
+                            const SizedBox.square(
                               dimension: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                value: _downloadProgress > 0
-                                    ? _downloadProgress
-                                    : null,
-                              ),
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           else if (!isSelected)
                             Icon(Icons.download,
