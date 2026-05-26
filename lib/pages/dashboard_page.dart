@@ -6,7 +6,6 @@ import '../theme/app_theme.dart';
 import '../utils/time_format.dart';
 import '../widgets/accuracy_ring.dart';
 import '../widgets/glass_card.dart';
-import '../widgets/gradient_header.dart';
 import '../widgets/metric_pill.dart';
 import '../widgets/mini_activity_chart.dart';
 import '../widgets/responsive_page.dart';
@@ -42,11 +41,15 @@ class DashboardPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildHero(context, state),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
                 _buildStatsRow(context, state),
-                const SizedBox(height: 20),
-                _buildQuickActions(context),
-                const SizedBox(height: 20),
+                const SizedBox(height: 28),
+                _buildCoreActions(context),
+                const SizedBox(height: 24),
+                _buildAiToolsSection(context),
+                const SizedBox(height: 24),
+                _buildAnalyticsSection(context),
+                const SizedBox(height: 24),
                 _buildActivityAndRecent(context, state),
                 const SizedBox(height: 32),
               ],
@@ -57,6 +60,7 @@ class DashboardPage extends StatelessWidget {
     );
   }
 
+  // ─── Hero Banner ─────────────────────────────────────────────
   Widget _buildHero(BuildContext context, AppState state) {
     final todayCount = state.dailyStats.isEmpty
         ? 0
@@ -64,39 +68,136 @@ class DashboardPage extends StatelessWidget {
     final goalPct = state.settings.dailyGoal == 0
         ? 1.0
         : (todayCount / state.settings.dailyGoal).clamp(0.0, 1.0);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return GradientHeader(
-      title: '欢迎回来 👋',
-      subtitle: '今日已练习 $todayCount / ${state.settings.dailyGoal} 句',
-      icon: Icons.school,
-      trailing: SizedBox(
-        width: 56,
-        height: 56,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            CircularProgressIndicator(
-              value: goalPct,
-              strokeWidth: 4,
-              backgroundColor: Colors.white.withValues(alpha: 0.2),
-              valueColor:
-                  const AlwaysStoppedAnimation(Colors.white),
-              strokeCap: StrokeCap.round,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(28, 28, 28, 24),
+      decoration: BoxDecoration(
+        gradient: isDark ? AppTheme.heroGradientDark : AppTheme.heroGradient,
+        borderRadius: AppTheme.borderXl,
+        boxShadow: AppTheme.shadowLg(Theme.of(context).brightness),
+      ),
+      child: Row(
+        children: [
+          // Left: greeting + stats chips
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _greeting(),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'DeutschFlow',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.8,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    _heroBadge(Icons.local_fire_department, '${state.streakDays} 天连续'),
+                    _heroBadge(Icons.check_circle_outline, '${state.totalSentencesPracticed} 句已练'),
+                    _heroBadge(Icons.replay, '${state.unmasteredCount} 待复习'),
+                  ],
+                ),
+              ],
             ),
-            Text(
-              '${(goalPct * 100).toInt()}%',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-                fontSize: 13,
-              ),
+          ),
+          // Right: circular progress
+          SizedBox(
+            width: 80,
+            height: 80,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 80,
+                  height: 80,
+                  child: CircularProgressIndicator(
+                    value: goalPct,
+                    strokeWidth: 6,
+                    backgroundColor: Colors.white.withValues(alpha: 0.15),
+                    valueColor: const AlwaysStoppedAnimation(Colors.white),
+                    strokeCap: StrokeCap.round,
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$todayCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 22,
+                        height: 1,
+                      ),
+                    ),
+                    Text(
+                      '/${state.settings.dailyGoal}',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
+  Widget _heroBadge(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 14),
+          const SizedBox(width: 4),
+          Text(text,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.95),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 6) return '🌙 夜深了，注意休息';
+    if (hour < 12) return '☀️ 早上好';
+    if (hour < 18) return '🌤 下午好';
+    return '🌙 晚上好';
+  }
+
+  // ─── Stats Row ───────────────────────────────────────────────
   Widget _buildStatsRow(BuildContext context, AppState state) {
     return LayoutBuilder(builder: (context, constraints) {
       final wide = constraints.maxWidth >= 700;
@@ -154,64 +255,148 @@ class DashboardPage extends StatelessWidget {
     });
   }
 
-  Widget _buildQuickActions(BuildContext context) {
+  // ─── Core Learning Actions ───────────────────────────────────
+  Widget _buildCoreActions(BuildContext context) {
     final theme = Theme.of(context);
     final actions = [
-      _QuickAction(Icons.lightbulb, '灵光一闪', AppTheme.gold,
-          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const QuickNotesPage()))),
-      _QuickAction(Icons.waves, '句海拾遗', theme.colorScheme.primary,
+      _QuickAction(Icons.waves, '句海拾遗', const Color(0xFF1B6B5A), '发现新句子',
           () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DiscoveryPage()))),
-      _QuickAction(Icons.chat, '德语对话', Colors.teal,
+      _QuickAction(Icons.chat_bubble_rounded, '德语对话', const Color(0xFF0891B2), 'AI口语练习',
           () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChatPracticePage()))),
-      _QuickAction(Icons.rate_review, '写作批改', Colors.indigo,
+      _QuickAction(Icons.edit_note, '写作批改', const Color(0xFF6366F1), 'AI写作反馈',
           () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const WritingPage()))),
-      _QuickAction(Icons.podcasts, '播客导入', Colors.deepPurple,
-          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PodcastPage()))),
-      _QuickAction(Icons.emoji_events, '学习成就', Colors.amber.shade700,
-          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AchievementsPage()))),
-      _QuickAction(Icons.bar_chart, '词频分析', Colors.cyan,
-          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const WordStatsPage()))),
-      _QuickAction(Icons.today, '每日德语', Colors.deepOrange,
+      _QuickAction(Icons.today, '每日德语', const Color(0xFFEA580C), '每日一句',
           () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DailyPage()))),
-      _QuickAction(Icons.analytics, '难度分析', Colors.blueGrey,
-          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DifficultyPage()))),
-      _QuickAction(Icons.translate, '双语对照', Colors.green.shade700,
+      _QuickAction(Icons.podcasts, '播客导入', const Color(0xFF7C3AED), '导入音频素材',
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PodcastPage()))),
+      _QuickAction(Icons.translate, '双语对照', const Color(0xFF059669), '中德对照阅读',
           () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BilingualPage()))),
-      _QuickAction(Icons.auto_awesome, 'AI造句', Colors.pink,
-          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SentenceGenPage()))),
-      _QuickAction(Icons.psychology, 'AI规划', Colors.purple,
-          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SmartReviewPage()))),
-      _QuickAction(Icons.science, '语法实验室', Colors.brown,
-          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const GrammarLabPage()))),
-      _QuickAction(Icons.auto_fix_high, '文本改写', Colors.lime.shade800,
-          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TextRewritePage()))),
-      _QuickAction(Icons.bug_report, '错误分析', Colors.red.shade700,
-          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ErrorAnalysisPage()))),
-      _QuickAction(Icons.timer, '番茄钟', Colors.red,
-          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PomodoroPage()))),
     ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cols = constraints.maxWidth >= 800 ? 4 : constraints.maxWidth >= 500 ? 3 : 2;
-        final itemWidth = (constraints.maxWidth - (cols - 1) * 10) / cols;
-        return Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: actions.map((a) => SizedBox(
-            width: itemWidth,
-            child: _QuickActionCard(
-              icon: a.icon,
-              label: a.label,
-              color: a.color,
-              onTap: a.onTap,
-            ),
-          )).toList(),
-        );
-      },
+    return _buildSection(
+      context,
+      icon: Icons.school_rounded,
+      title: '核心学习',
+      color: theme.colorScheme.primary,
+      children: actions,
+      cols: 3,
     );
   }
 
+  // ─── AI Power Tools ──────────────────────────────────────────
+  Widget _buildAiToolsSection(BuildContext context) {
+    final actions = [
+      _QuickAction(Icons.auto_awesome, 'AI造句', const Color(0xFFEC4899), '智能例句生成',
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SentenceGenPage()))),
+      _QuickAction(Icons.psychology_rounded, 'AI规划', const Color(0xFF8B5CF6), '个性化复习',
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SmartReviewPage()))),
+      _QuickAction(Icons.science_rounded, '语法实验室', const Color(0xFF92400E), '复合词/词性/框形',
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const GrammarLabPage()))),
+      _QuickAction(Icons.auto_fix_high, '文本改写', const Color(0xFF65A30D), 'CEFR级别改写',
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TextRewritePage()))),
+    ];
+
+    return _buildSection(
+      context,
+      icon: Icons.bolt_rounded,
+      title: 'AI 工具',
+      color: AppTheme.lavender,
+      children: actions,
+      cols: 4,
+    );
+  }
+
+  // ─── Analytics & Extras ──────────────────────────────────────
+  Widget _buildAnalyticsSection(BuildContext context) {
+    final actions = [
+      _QuickAction(Icons.bar_chart_rounded, '词频分析', const Color(0xFF0891B2), '词汇使用统计',
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const WordStatsPage()))),
+      _QuickAction(Icons.bug_report_rounded, '错误分析', const Color(0xFFDC2626), '错误类型分布',
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ErrorAnalysisPage()))),
+      _QuickAction(Icons.analytics_rounded, '难度分析', const Color(0xFF475569), '文本难度评估',
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DifficultyPage()))),
+      _QuickAction(Icons.emoji_events_rounded, '学习成就', const Color(0xFFD97706), '成就与徽章',
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AchievementsPage()))),
+      _QuickAction(Icons.lightbulb_rounded, '灵光一闪', const Color(0xFFCA8A04), '快速记录笔记',
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const QuickNotesPage()))),
+      _QuickAction(Icons.timer_rounded, '番茄钟', const Color(0xFFE11D48), '专注计时',
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PomodoroPage()))),
+    ];
+
+    return _buildSection(
+      context,
+      icon: Icons.insights_rounded,
+      title: '统计 & 工具',
+      color: AppTheme.sky,
+      children: actions,
+      cols: 3,
+    );
+  }
+
+  // ─── Section Builder ─────────────────────────────────────────
+  Widget _buildSection(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required Color color,
+    required List<_QuickAction> children,
+    int cols = 3,
+  }) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 16),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final effectiveCols = constraints.maxWidth >= 800
+                ? cols
+                : constraints.maxWidth >= 500
+                    ? (cols > 2 ? cols - 1 : cols)
+                    : 2;
+            final spacing = 10.0;
+            final itemWidth =
+                (constraints.maxWidth - (effectiveCols - 1) * spacing) / effectiveCols;
+            return Wrap(
+              spacing: spacing,
+              runSpacing: spacing,
+              children: children
+                  .map((a) => SizedBox(
+                        width: itemWidth,
+                        child: _ActionCard(action: a),
+                      ))
+                  .toList(),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  // ─── Activity & Recent ───────────────────────────────────────
   Widget _buildActivityAndRecent(BuildContext context, AppState state) {
     return LayoutBuilder(builder: (context, constraints) {
       final wide = constraints.maxWidth >= 800;
@@ -239,6 +424,127 @@ class DashboardPage extends StatelessWidget {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// Private widgets
+// ═══════════════════════════════════════════════════════════════════
+
+class _ActionCard extends StatefulWidget {
+  const _ActionCard({required this.action});
+  final _QuickAction action;
+
+  @override
+  State<_ActionCard> createState() => _ActionCardState();
+}
+
+class _ActionCardState extends State<_ActionCard> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final color = widget.action.color;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        transform: _hovering
+            ? (Matrix4.identity()..translate(0.0, -2.0))
+            : Matrix4.identity(),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.action.onTap,
+            borderRadius: AppTheme.borderLg,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [
+                          color.withValues(alpha: 0.12),
+                          color.withValues(alpha: 0.04),
+                        ]
+                      : [
+                          color.withValues(alpha: 0.06),
+                          Colors.white.withValues(alpha: 0.9),
+                        ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: AppTheme.borderLg,
+                border: Border.all(
+                  color: _hovering
+                      ? color.withValues(alpha: 0.4)
+                      : color.withValues(alpha: isDark ? 0.18 : 0.12),
+                  width: _hovering ? 1.5 : 1,
+                ),
+                boxShadow: _hovering
+                    ? [
+                        BoxShadow(
+                          color: color.withValues(alpha: 0.12),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : AppTheme.shadowSm(theme.brightness),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: isDark ? 0.2 : 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(widget.action.icon, color: color, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          widget.action.label,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          widget.action.subtitle,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontSize: 11,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: theme.colorScheme.onSurfaceVariant
+                        .withValues(alpha: 0.4),
+                    size: 18,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ActivityCard extends StatelessWidget {
   const _ActivityCard({required this.stats});
   final List<dynamic> stats;
@@ -251,7 +557,6 @@ class _ActivityCard extends StatelessWidget {
         .toList()
         .cast<double>();
 
-    // Pad to 30 days
     while (data.length < 30) {
       data.insert(0, 0);
     }
@@ -262,7 +567,7 @@ class _ActivityCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.bar_chart, color: theme.colorScheme.primary, size: 20),
+              Icon(Icons.bar_chart_rounded, color: theme.colorScheme.primary, size: 20),
               const SizedBox(width: 8),
               Text('30 天练习活跃度',
                   style: theme.textTheme.titleMedium
@@ -270,11 +575,7 @@ class _ActivityCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          MiniActivityChart(
-            data: data,
-            height: 100,
-            barWidth: 5,
-          ),
+          MiniActivityChart(data: data, height: 100, barWidth: 5),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -288,43 +589,6 @@ class _ActivityCard extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _QuickActionCard extends StatelessWidget {
-  const _QuickActionCard({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return GlassCard(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppTheme.borderMd,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(height: 8),
-              Text(label,
-                  style: theme.textTheme.labelMedium
-                      ?.copyWith(fontWeight: FontWeight.w700)),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -344,7 +608,7 @@ class _RecentSessionsCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.history, color: theme.colorScheme.primary, size: 20),
+              Icon(Icons.history_rounded, color: theme.colorScheme.primary, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: Text('最近练习',
@@ -356,10 +620,20 @@ class _RecentSessionsCard extends StatelessWidget {
           const SizedBox(height: 12),
           if (sessions.isEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 24),
               child: Center(
-                child: Text('还没有练习记录',
-                    style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
+                child: Column(
+                  children: [
+                    Icon(Icons.hourglass_empty_rounded,
+                        color: theme.colorScheme.onSurfaceVariant
+                            .withValues(alpha: 0.4),
+                        size: 32),
+                    const SizedBox(height: 8),
+                    Text('还没有练习记录',
+                        style: TextStyle(
+                            color: theme.colorScheme.onSurfaceVariant)),
+                  ],
+                ),
               ),
             )
           else
@@ -398,9 +672,10 @@ class _RecentSessionsCard extends StatelessWidget {
 }
 
 class _QuickAction {
-  const _QuickAction(this.icon, this.label, this.color, this.onTap);
+  const _QuickAction(this.icon, this.label, this.color, this.subtitle, this.onTap);
   final IconData icon;
   final String label;
   final Color color;
+  final String subtitle;
   final VoidCallback onTap;
 }
