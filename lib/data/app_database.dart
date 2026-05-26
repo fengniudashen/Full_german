@@ -365,6 +365,8 @@ class AppDatabase extends GeneratedDatabase {
       providerUrls: providerUrls,
       customProviderUrl: map['ai_custom_url'] ?? '',
       customProviderName: map['ai_custom_name'] ?? '',
+      useLocalWhisper: map['use_local_whisper'] == 'true',
+      whisperModel: map['whisper_model'] ?? 'base',
     );
   }
 

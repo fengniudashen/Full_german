@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/ai_provider.dart';
 import '../providers/app_state.dart';
 import '../services/dictionary_service.dart';
+import '../services/whisper_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/responsive_page.dart';
@@ -36,6 +37,10 @@ class SettingsPage extends StatelessWidget {
               _SectionTitle('AI 助手'),
               const SizedBox(height: 8),
               _AiSettings(state: state),
+              const SizedBox(height: 24),
+              _SectionTitle('语音识别'),
+              const SizedBox(height: 8),
+              _WhisperSettings(state: state),
               const SizedBox(height: 24),
               _SectionTitle('词典'),
               const SizedBox(height: 8),
@@ -656,6 +661,163 @@ class _DictionaryImportCardState extends State<_DictionaryImportCard> {
         SnackBar(content: Text('成功导入 $count 个词条')),
       );
     }
+  }
+}
+
+class _WhisperSettings extends StatefulWidget {
+  const _WhisperSettings({required this.state});
+  final AppState state;
+
+  @override
+  State<_WhisperSettings> createState() => _WhisperSettingsState();
+}
+
+class _WhisperSettingsState extends State<_WhisperSettings> {
+  final WhisperService _whisper = WhisperService();
+  bool _downloading = false;
+  double _progress = 0;
+  String? _statusText;
+  bool? _cliReady;
+  bool? _modelReady;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkStatus();
+  }
+
+  Future<void> _checkStatus() async {
+    final cli = await _whisper.isCliReady;
+    final model = await _whisper.isModelReady(
+      WhisperModel.values.firstWhere(
+        (m) => m.label == widget.state.settings.whisperModel,
+        orElse: () => WhisperModel.base,
+      ),
+    );
+    if (mounted) setState(() { _cliReady = cli; _modelReady = model; });
+  }
+
+  Future<void> _downloadAll() async {
+    final model = WhisperModel.values.firstWhere(
+      (m) => m.label == widget.state.settings.whisperModel,
+      orElse: () => WhisperModel.base,
+    );
+
+    setState(() { _downloading = true; _progress = 0; _statusText = '下载 whisper.cpp…'; });
+
+    try {
+      await _whisper.ensureCli(onProgress: (p) {
+        if (mounted) setState(() => _progress = p * 0.05); // 5% for CLI
+      });
+
+      if (mounted) setState(() => _statusText = '下载模型 ${model.label} (${model.sizeMB} MB)…');
+
+      await _whisper.ensureModel(
+        model: model,
+        onProgress: (p) {
+          if (mounted) setState(() => _progress = 0.05 + p * 0.95);
+        },
+      );
+
+      if (mounted) {
+        setState(() {
+          _downloading = false;
+          _statusText = '安装完成！';
+          _cliReady = true;
+          _modelReady = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() { _downloading = false; _statusText = '下载失败: $e'; });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final useLocal = widget.state.settings.useLocalWhisper;
+    final currentModel = widget.state.settings.whisperModel;
+
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text('本地 Whisper 转写',
+                style: theme.textTheme.bodyLarge
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            subtitle: Text(
+              useLocal ? '使用本地 whisper.cpp（离线，免费）' : '使用 API 在线转写',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+            value: useLocal,
+            onChanged: (v) => widget.state.updateUseLocalWhisper(v),
+          ),
+          if (useLocal) ...[
+            const SizedBox(height: 12),
+            Text('模型大小', style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: WhisperModel.values.map((m) {
+                final selected = m.label == currentModel;
+                return ChoiceChip(
+                  label: Text('${m.label} (${m.sizeMB} MB)'),
+                  selected: selected,
+                  onSelected: (_) {
+                    widget.state.updateWhisperModel(m.label);
+                    _checkStatus();
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+            if (_cliReady == true && _modelReady == true)
+              Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green, size: 18),
+                  const SizedBox(width: 6),
+                  Text('已就绪', style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.green, fontWeight: FontWeight.w600)),
+                ],
+              )
+            else if (_downloading)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_statusText != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(_statusText!,
+                          style: theme.textTheme.bodySmall),
+                    ),
+                  LinearProgressIndicator(value: _progress),
+                ],
+              )
+            else
+              ElevatedButton.icon(
+                onPressed: _downloadAll,
+                icon: const Icon(Icons.download, size: 18),
+                label: Text('下载 whisper.cpp + 模型'),
+              ),
+            if (_statusText != null && !_downloading && _cliReady != true)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(_statusText!,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.error)),
+              ),
+          ],
+        ],
+      ),
+    );
   }
 }
 

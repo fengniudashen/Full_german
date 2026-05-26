@@ -12,6 +12,7 @@ import '../models/word_comparison.dart';
 import '../providers/app_state.dart';
 import '../services/ai_service.dart';
 import '../services/text_comparator.dart';
+import '../services/whisper_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/accuracy_ring.dart';
 import '../widgets/glass_card.dart';
@@ -65,12 +66,18 @@ class _SpeakingPageState extends State<SpeakingPage> {
         return;
       }
 
+      final useLocal = context.read<AppState>().settings.useLocalWhisper;
       final dir = await getTemporaryDirectory();
+      final ext = useLocal ? 'wav' : 'm4a';
       final filePath = p.join(
-          dir.path, 'speaking_${DateTime.now().millisecondsSinceEpoch}.m4a');
+          dir.path, 'speaking_${DateTime.now().millisecondsSinceEpoch}.$ext');
 
       await _recorder.start(
-        const RecordConfig(encoder: AudioEncoder.aacLc),
+        RecordConfig(
+          encoder: useLocal ? AudioEncoder.wav : AudioEncoder.aacLc,
+          sampleRate: useLocal ? 16000 : 44100,
+          numChannels: 1,
+        ),
         path: filePath,
       );
 
@@ -120,9 +127,23 @@ class _SpeakingPageState extends State<SpeakingPage> {
     });
 
     try {
-      final provider = context.read<AppState>().settings.activeProvider;
-      final service = AiService(provider: provider);
-      final text = await service.transcribeAudio(filePath);
+      final settings = context.read<AppState>().settings;
+      String text;
+
+      if (settings.useLocalWhisper) {
+        // Local whisper.cpp transcription
+        final model = WhisperModel.values.firstWhere(
+          (m) => m.label == settings.whisperModel,
+          orElse: () => WhisperModel.base,
+        );
+        final whisper = WhisperService();
+        text = await whisper.transcribe(filePath, model: model);
+      } else {
+        // API-based transcription
+        final provider = settings.activeProvider;
+        final service = AiService(provider: provider);
+        text = await service.transcribeAudio(filePath);
+      }
 
       if (!mounted) return;
       final result = TextComparator.compare(_currentSentence, text);

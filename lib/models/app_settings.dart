@@ -14,6 +14,8 @@ class AppSettings {
     this.providerUrls = const {},
     this.customProviderUrl = '',
     this.customProviderName = '',
+    this.useLocalWhisper = false,
+    this.whisperModel = 'base',
   });
 
   final String themeMode; // 'light' | 'dark' | 'system'
@@ -28,6 +30,8 @@ class AppSettings {
   final Map<String, String> providerUrls;   // id → custom URL
   final String customProviderUrl;
   final String customProviderName;
+  final bool useLocalWhisper;
+  final String whisperModel; // 'tiny' | 'base' | 'small'
 
   /// Get the currently active provider with its config.
   AiProvider get activeProvider {
@@ -90,6 +94,8 @@ class AppSettings {
     Map<String, String>? providerUrls,
     String? customProviderUrl,
     String? customProviderName,
+    bool? useLocalWhisper,
+    String? whisperModel,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -104,6 +110,8 @@ class AppSettings {
       providerUrls: providerUrls ?? this.providerUrls,
       customProviderUrl: customProviderUrl ?? this.customProviderUrl,
       customProviderName: customProviderName ?? this.customProviderName,
+      useLocalWhisper: useLocalWhisper ?? this.useLocalWhisper,
+      whisperModel: whisperModel ?? this.whisperModel,
     );
   }
 }

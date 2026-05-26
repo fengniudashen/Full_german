@@ -185,6 +185,20 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Toggle between local Whisper and API-based transcription.
+  Future<void> updateUseLocalWhisper(bool value) async {
+    await database.saveSetting('use_local_whisper', value.toString());
+    _settings = _settings.copyWith(useLocalWhisper: value);
+    notifyListeners();
+  }
+
+  /// Set the local Whisper model size (tiny/base/small).
+  Future<void> updateWhisperModel(String model) async {
+    await database.saveSetting('whisper_model', model);
+    _settings = _settings.copyWith(whisperModel: model);
+    notifyListeners();
+  }
+
   // ─── Projects ───────────────────────────────────────────────
   Future<int> createProject({
     required String name,
