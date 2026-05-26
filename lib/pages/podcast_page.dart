@@ -508,12 +508,21 @@ class _PodcastPageState extends State<PodcastPage> {
                 ),
               ),
             const SizedBox(height: 4),
-            Text(
-              '或手动粘贴文本：',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+            if (_srtContent == null)
+              Text(
+                '或手动粘贴文本：',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              )
+            else
+              Text(
+                '↓ 可直接编辑修改转录文本',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppTheme.emerald,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
             const SizedBox(height: 8),
             TextField(
               controller: _nameCtrl,
@@ -525,10 +534,10 @@ class _PodcastPageState extends State<PodcastPage> {
             const SizedBox(height: 12),
             TextField(
               controller: _textCtrl,
-              minLines: 6,
-              maxLines: 12,
-              decoration: const InputDecoration(
-                labelText: '德语原文',
+              minLines: 8,
+              maxLines: 16,
+              decoration: InputDecoration(
+                labelText: _srtContent != null ? '转录文本（可编辑修改）' : '德语原文',
                 alignLabelWithHint: true,
                 hintText: '粘贴播客对应的德语文本或转录稿',
               ),
