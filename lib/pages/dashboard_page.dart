@@ -25,6 +25,7 @@ import 'smart_review_page.dart';
 import 'text_rewrite_page.dart';
 import 'word_stats_page.dart';
 import 'writing_page.dart';
+import 'resource_hub_page.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -271,6 +272,8 @@ class DashboardPage extends StatelessWidget {
           () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PodcastPage()))),
       _QuickAction(Icons.translate, '双语对照', const Color(0xFF059669), '中德对照阅读',
           () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BilingualPage()))),
+      _QuickAction(Icons.explore_rounded, '资源中心', const Color(0xFF0284C7), '音频/视频/阅读素材',
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ResourceHubPage()))),
     ];
 
     return _buildSection(
