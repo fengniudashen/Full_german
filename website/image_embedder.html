@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>DeutschFlow 网页截图嵌入工具</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0a0a0f; color: #e0e0e0;
+    min-height: 100vh; padding: 24px;
+  }
+  h1 { text-align: center; margin-bottom: 8px; color: #34d399; font-size: 1.6rem; }
+  .subtitle { text-align: center; color: #888; margin-bottom: 32px; font-size: 0.9rem; }
+  .steps {
+    max-width: 900px; margin: 0 auto 24px;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 16px 24px;
+  }
+  .steps h3 { color: #34d399; margin-bottom: 8px; font-size: 0.95rem; }
+  .steps ol { padding-left: 20px; color: #aaa; font-size: 0.85rem; line-height: 1.8; }
+  .slots { max-width: 900px; margin: 0 auto; display: grid; grid-template-columns: 1fr; gap: 16px; }
+  .slot {
+    background: rgba(255,255,255,0.03); border: 2px dashed rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 20px; transition: all 0.3s;
+    display: flex; gap: 20px; align-items: center;
+  }
+  .slot.has-image { border-color: #34d399; border-style: solid; }
+  .slot.drag-over { border-color: #34d399; background: rgba(52,211,153,0.05); }
+  .slot-info { flex: 1; }
+  .slot-id { font-weight: 700; color: #34d399; font-size: 1rem; margin-bottom: 4px; }
+  .slot-desc { color: #888; font-size: 0.85rem; }
+  .slot-preview {
+    width: 200px; height: 120px; border-radius: 8px; overflow: hidden;
+    background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center;
+    color: #555; font-size: 0.8rem; flex-shrink: 0; position: relative; cursor: pointer;
+  }
+  .slot-preview img { width: 100%; height: 100%; object-fit: cover; }
+  .slot-preview .drop-text { text-align: center; padding: 10px; pointer-events: none; }
+  .slot-size { color: #666; font-size: 0.75rem; margin-top: 4px; }
+  .slot-actions { display: flex; gap: 8px; margin-top: 8px; }
+  .btn {
+    padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer;
+    font-size: 0.8rem; font-weight: 600; transition: all 0.2s;
+  }
+  .btn-browse { background: rgba(52,211,153,0.15); color: #34d399; }
+  .btn-browse:hover { background: rgba(52,211,153,0.25); }
+  .btn-clear { background: rgba(255,100,100,0.1); color: #f87171; }
+  .btn-clear:hover { background: rgba(255,100,100,0.2); }
+  .bottom-bar {
+    max-width: 900px; margin: 32px auto 0; display: flex; gap: 16px;
+    justify-content: center; align-items: center; flex-wrap: wrap;
+  }
+  .btn-big {
+    padding: 12px 32px; border: none; border-radius: 10px; cursor: pointer;
+    font-size: 1rem; font-weight: 700; transition: all 0.3s;
+  }
+  .btn-load { background: rgba(255,255,255,0.06); color: #ccc; border: 1px solid rgba(255,255,255,0.1); }
+  .btn-load:hover { background: rgba(255,255,255,0.1); }
+  .btn-save { background: linear-gradient(135deg, #34d399, #059669); color: #000; }
+  .btn-save:hover { transform: scale(1.03); box-shadow: 0 4px 20px rgba(52,211,153,0.3); }
+  .btn-save:disabled { opacity: 0.3; cursor: not-allowed; transform: none; box-shadow: none; }
+  .status { text-align: center; margin-top: 16px; color: #34d399; font-size: 0.9rem; min-height: 20px; }
+  input[type="file"] { display: none; }
+</style>
+</head>
+<body>
+
+<h1>🖼️ DeutschFlow 截图嵌入工具</h1>
+<p class="subtitle">拖拽截图到对应位置，一键生成嵌入图片的网页</p>
+
+<div class="steps">
+  <h3>使用步骤</h3>
+  <ol>
+    <li>点击下方「加载 index.html」按钮，选择网页文件</li>
+    <li>将截图拖拽到对应的占位区域（或点击区域选择文件）</li>
+    <li>所有图片添加完成后，点击「保存 index.html」导出</li>
+  </ol>
+</div>
+
+<div class="slots" id="slots"></div>
+
+<div class="bottom-bar">
+  <button class="btn-big btn-load" onclick="loadHTML()">📂 加载 index.html</button>
+  <button class="btn-big btn-save" id="saveBtn" disabled onclick="saveHTML()">💾 保存 index.html</button>
+</div>
+<div class="status" id="status"></div>
+
+<input type="file" id="htmlInput" accept=".html,.htm" />
+<input type="file" id="imgInput" accept="image/*" />
+
+<script>
+const SLOTS = [
+  { id: 1, desc: '主界面截图（Hero 区域大图）', comment: 'IMAGE_PLACEHOLDER_1' },
+  { id: 2, desc: '总览仪表盘 — 学习数据一览', comment: 'IMAGE_PLACEHOLDER_2' },
+  { id: 3, desc: '听写练习 — 逐词对比界面', comment: 'IMAGE_PLACEHOLDER_3' },
+  { id: 4, desc: '时间轴标注 — 音频波形界面', comment: 'IMAGE_PLACEHOLDER_4' },
+  { id: 5, desc: '跟读模式 — 卡拉OK跟读', comment: 'IMAGE_PLACEHOLDER_5' },
+  { id: 6, desc: 'AI 助手 — 分析模式', comment: 'IMAGE_PLACEHOLDER_6' },
+  { id: 7, desc: '口语练习 — 录音转写', comment: 'IMAGE_PLACEHOLDER_7' },
+  { id: 8, desc: '资源中心 — 学习资源列表', comment: 'IMAGE_PLACEHOLDER_8' },
+  { id: 9, desc: '错词本 — 复习界面', comment: 'IMAGE_PLACEHOLDER_9' },
+];
+
+let htmlContent = '';
+const imageData = {};  // slot id -> { base64, size, name }
+let currentSlotId = null;
+
+function init() {
+  const container = document.getElementById('slots');
+  SLOTS.forEach(slot => {
+    const div = document.createElement('div');
+    div.className = 'slot';
+    div.id = `slot-${slot.id}`;
+    div.innerHTML = `
+      <div class="slot-info">
+        <div class="slot-id">📌 位置 ${slot.id}: ${slot.desc}</div>
+        <div class="slot-desc">HTML 注释: &lt;!-- ${slot.comment} --&gt;</div>
+        <div class="slot-size" id="size-${slot.id}"></div>
+        <div class="slot-actions">
+          <button class="btn btn-browse" onclick="browseImage(${slot.id})">选择图片</button>
+          <button class="btn btn-clear" onclick="clearImage(${slot.id})" style="display:none" id="clear-${slot.id}">移除</button>
+        </div>
+      </div>
+      <div class="slot-preview" id="preview-${slot.id}"
+           ondragover="onDragOver(event, ${slot.id})"
+           ondragleave="onDragLeave(event, ${slot.id})"
+           ondrop="onDrop(event, ${slot.id})"
+           onclick="browseImage(${slot.id})">
+        <div class="drop-text">拖拽图片到此处<br>或点击选择</div>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function onDragOver(e, id) {
+  e.preventDefault();
+  document.getElementById(`slot-${id}`).classList.add('drag-over');
+}
+
+function onDragLeave(e, id) {
+  document.getElementById(`slot-${id}`).classList.remove('drag-over');
+}
+
+function onDrop(e, id) {
+  e.preventDefault();
+  document.getElementById(`slot-${id}`).classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    processImage(id, file);
+  }
+}
+
+function browseImage(id) {
+  currentSlotId = id;
+  const input = document.getElementById('imgInput');
+  input.value = '';
+  input.onchange = () => {
+    if (input.files[0]) processImage(id, input.files[0]);
+  };
+  input.click();
+}
+
+function processImage(id, file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const base64 = reader.result;
+    imageData[id] = { base64, size: file.size, name: file.name };
+
+    const preview = document.getElementById(`preview-${id}`);
+    preview.innerHTML = `<img src="${base64}" alt="位置 ${id}">`;
+
+    const sizeKB = (file.size / 1024).toFixed(1);
+    document.getElementById(`size-${id}`).textContent = `${file.name} (${sizeKB} KB)`;
+    document.getElementById(`clear-${id}`).style.display = 'inline-block';
+    document.getElementById(`slot-${id}`).classList.add('has-image');
+
+    updateSaveBtn();
+    setStatus(`已添加: 位置 ${id} — ${file.name}`);
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearImage(id) {
+  delete imageData[id];
+  const preview = document.getElementById(`preview-${id}`);
+  preview.innerHTML = '<div class="drop-text">拖拽图片到此处<br>或点击选择</div>';
+  document.getElementById(`size-${id}`).textContent = '';
+  document.getElementById(`clear-${id}`).style.display = 'none';
+  document.getElementById(`slot-${id}`).classList.remove('has-image');
+  updateSaveBtn();
+}
+
+function updateSaveBtn() {
+  const count = Object.keys(imageData).length;
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = !htmlContent || count === 0;
+  btn.textContent = `💾 保存 index.html (${count}/9 张图片)`;
+}
+
+function loadHTML() {
+  const input = document.getElementById('htmlInput');
+  input.value = '';
+  input.onchange = () => {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      htmlContent = reader.result;
+      updateSaveBtn();
+      setStatus(`已加载: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function saveHTML() {
+  if (!htmlContent) { setStatus('请先加载 index.html'); return; }
+  let output = htmlContent;
+
+  Object.entries(imageData).forEach(([id, data]) => {
+    const num = parseInt(id);
+    if (num === 1) {
+      // Hero screenshot: replace the img-slot div
+      output = output.replace(
+        /<div class="img-slot">主界面截图<\/div>/,
+        `<img src="${data.base64}" alt="DeutschFlow 主界面" style="width:100%;border-radius:12px;">`
+      );
+    } else {
+      // Gallery items: replace the gallery-slot div
+      const slotInfo = SLOTS.find(s => s.id === num);
+      if (!slotInfo) return;
+      // Match gallery-slot div inside the comment block
+      const commentRegex = new RegExp(
+        `(<!-- ${slotInfo.comment}[^>]*-->\\s*<div class="gallery-item">\\s*)<div class="gallery-slot">[^<]*</div>`,
+        's'
+      );
+      output = output.replace(
+        commentRegex,
+        `$1<img src="${data.base64}" alt="${slotInfo.desc}" style="width:100%;border-radius:8px;">`
+      );
+    }
+  });
+
+  // Download
+  const blob = new Blob([output], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'index.html';
+  a.click();
+  URL.revokeObjectURL(url);
+
+  const count = Object.keys(imageData).length;
+  setStatus(`已保存! ${count} 张图片已嵌入到 index.html`);
+}
+
+function setStatus(msg) {
+  document.getElementById('status').textContent = msg;
+}
+
+init();
+</script>
+</body>
+</html>
