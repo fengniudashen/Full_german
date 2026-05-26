@@ -7,6 +7,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/app_state.dart';
+import '../services/subtitle_parser.dart';
+import '../services/whisper_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import 'timeline_page.dart';
@@ -25,13 +27,17 @@ class _PodcastPageState extends State<PodcastPage> {
   final _urlCtrl = TextEditingController();
   final _textCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
+  final WhisperService _whisper = WhisperService();
 
   bool _loading = false;
   bool _downloading = false;
+  bool _transcribing = false;
+  double _transcribeProgress = 0;
   String? _error;
   List<_Episode> _episodes = const [];
   _Episode? _selected;
   String? _downloadedAudioPath;
+  String? _srtContent; // SRT from Whisper transcription
 
   static const _presets = [
     _Preset(
@@ -186,22 +192,110 @@ class _PodcastPageState extends State<PodcastPage> {
     }
   }
 
+  // ─── Whisper Transcribe ─────────────────────────────────────
+
+  Future<void> _whisperTranscribe() async {
+    if (_downloadedAudioPath == null) return;
+    final settings = context.read<AppState>().settings;
+    final model = WhisperModel.values.firstWhere(
+      (m) => m.label == settings.whisperModel,
+      orElse: () => WhisperModel.base,
+    );
+
+    setState(() {
+      _transcribing = true;
+      _transcribeProgress = 0;
+      _error = null;
+    });
+
+    try {
+      // Ensure Whisper CLI is ready
+      setState(() => _transcribeProgress = 0.1);
+      await _whisper.ensureCli(
+        onProgress: (p) {
+          if (mounted) setState(() => _transcribeProgress = 0.1 + p * 0.2);
+        },
+      );
+
+      // Ensure model is ready
+      if (!mounted) return;
+      setState(() => _transcribeProgress = 0.3);
+      await _whisper.ensureModel(
+        model: model,
+        onProgress: (p) {
+          if (mounted) setState(() => _transcribeProgress = 0.3 + p * 0.3);
+        },
+      );
+
+      // Transcribe to SRT
+      if (!mounted) return;
+      setState(() => _transcribeProgress = 0.6);
+      final srt = await _whisper.transcribeToSrt(
+        _downloadedAudioPath!,
+        model: model,
+      );
+
+      if (!mounted) return;
+
+      // Parse SRT to get text for display
+      final entries = SubtitleParser.parseSrt(srt);
+      final text = entries.map((e) => e.text).join('\n');
+
+      setState(() {
+        _srtContent = srt;
+        _textCtrl.text = text;
+        _transcribing = false;
+        _transcribeProgress = 1.0;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('转写完成！共 ${entries.length} 个句段，已填入文本框'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Whisper 转写失败: $e';
+        _transcribing = false;
+      });
+    }
+  }
+
   Future<void> _createProject() async {
     if (_downloadedAudioPath == null) return;
     final text = _textCtrl.text.trim();
     if (text.isEmpty) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('请输入或粘贴德语原文')));
+          .showSnackBar(const SnackBar(content: Text('请输入或粘贴德语原文，或使用 Whisper 自动转写')));
       return;
     }
 
     setState(() => _loading = true);
     try {
-      final id = await context.read<AppState>().createProject(
-            name: _nameCtrl.text.trim().isEmpty ? '播客项目' : _nameCtrl.text.trim(),
-            sourceText: text,
-            audioPath: _downloadedAudioPath!,
-          );
+      final projectName =
+          _nameCtrl.text.trim().isEmpty ? '播客项目' : _nameCtrl.text.trim();
+      int id;
+
+      if (_srtContent != null && _srtContent!.isNotEmpty) {
+        // Use SRT with timestamps
+        id = await context.read<AppState>().createProjectFromSrt(
+              name: projectName,
+              srtContent: _srtContent!,
+              audioPath: _downloadedAudioPath!,
+            );
+      } else {
+        // Plain text — no timestamps
+        id = await context.read<AppState>().createProject(
+              name: projectName,
+              sourceText: text,
+              audioPath: _downloadedAudioPath!,
+            );
+      }
+
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(builder: (_) => TimelinePage(projectId: id)),
@@ -362,6 +456,49 @@ class _PodcastPageState extends State<PodcastPage> {
                         ],
                       ),
                       const SizedBox(height: 16),
+                      // Whisper transcribe button
+                      OutlinedButton.icon(
+                        onPressed: _transcribing ? null : _whisperTranscribe,
+                        icon: _transcribing
+                            ? SizedBox.square(
+                                dimension: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  value: _transcribeProgress > 0
+                                      ? _transcribeProgress
+                                      : null,
+                                ),
+                              )
+                            : const Icon(Icons.mic, size: 18),
+                        label: Text(_transcribing
+                            ? 'Whisper 转写中 ${(_transcribeProgress * 100).toInt()}%...'
+                            : '🎙 Whisper 自动转写 (带时间戳)'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          side: BorderSide(color: AppTheme.emerald.withValues(alpha: 0.4)),
+                          foregroundColor: AppTheme.emerald,
+                        ),
+                      ),
+                      if (_srtContent != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            '✅ 已生成带时间戳的 SRT 字幕',
+                            style: TextStyle(
+                              color: AppTheme.emerald,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '或手动粘贴文本：',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       TextField(
                         controller: _nameCtrl,
                         decoration: const InputDecoration(

@@ -191,6 +191,66 @@ class WhisperService {
     return 4 + model.sizeMB; // 4 MB binary + model size
   }
 
+  /// Transcribe an audio file and return SRT-format subtitles with timestamps.
+  ///
+  /// This generates segment-level timestamps suitable for dictation practice.
+  /// Returns SRT content as a string.
+  Future<String> transcribeToSrt(
+    String audioPath, {
+    WhisperModel model = WhisperModel.base,
+  }) async {
+    await ensureCli();
+    await ensureModel(model: model);
+
+    final dir = await _toolDir;
+    final cliPath = _cliPath ?? p.join(dir, 'whisper-cli.exe');
+    final modelPath = _modelPath ?? p.join(dir, model.filename);
+
+    // whisper.cpp --output-srt writes <input>.srt next to the input file.
+    // We use a temp directory to avoid polluting the original audio location.
+    final tempDir = await Directory.systemTemp.createTemp('whisper_');
+    final tempAudio = p.join(tempDir.path, p.basename(audioPath));
+    await File(audioPath).copy(tempAudio);
+
+    final result = await Process.run(
+      cliPath,
+      [
+        '-m', modelPath,
+        '-l', 'de',
+        '--output-srt',
+        '-f', tempAudio,
+      ],
+      stdoutEncoding: utf8,
+      stderrEncoding: utf8,
+    );
+
+    if (result.exitCode != 0) {
+      final stderr = (result.stderr as String).trim();
+      // Clean up temp
+      try { tempDir.deleteSync(recursive: true); } catch (_) {}
+      throw Exception('whisper.cpp SRT 转写失败 (exit ${result.exitCode}): $stderr');
+    }
+
+    // Read the generated SRT file
+    final srtPath = '${p.withoutExtension(tempAudio)}.srt';
+    final srtFile = File(srtPath);
+    if (!srtFile.existsSync()) {
+      try { tempDir.deleteSync(recursive: true); } catch (_) {}
+      throw Exception('whisper.cpp 未生成 SRT 文件');
+    }
+
+    final srtContent = await srtFile.readAsString(encoding: utf8);
+
+    // Clean up temp
+    try { tempDir.deleteSync(recursive: true); } catch (_) {}
+
+    if (srtContent.trim().isEmpty) {
+      throw Exception('whisper.cpp SRT 输出为空，音频可能过短或格式不支持。');
+    }
+
+    return srtContent;
+  }
+
   /// Helper: download a file with progress callback.
   Future<void> _download(
     String url,

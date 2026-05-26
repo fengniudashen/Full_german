@@ -12,6 +12,7 @@ import '../models/study_project.dart';
 import '../models/wrong_word.dart';
 import '../services/csv_exporter.dart';
 import '../services/dictionary_service.dart';
+import '../services/subtitle_parser.dart';
 import '../services/text_parser.dart';
 
 class AppState extends ChangeNotifier {
@@ -222,6 +223,40 @@ class AppState extends ChangeNotifier {
       final copied = await _copyAudioFile(projectId, audioPath);
       await database.updateProjectAudioPath(projectId, copied);
       await database.insertSentences(projectId, sentences);
+      await loadProjects();
+      return projectId;
+    } finally {
+      _setBusy(false);
+    }
+  }
+
+  /// Create a project from SRT subtitle content with timestamps.
+  Future<int> createProjectFromSrt({
+    required String name,
+    required String srtContent,
+    required String audioPath,
+  }) async {
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty) throw ArgumentError('请输入项目名称。');
+    if (audioPath.trim().isEmpty) throw ArgumentError('请导入 MP3 音频。');
+
+    final entries = SubtitleParser.parseSrt(srtContent);
+    if (entries.isEmpty) throw ArgumentError('SRT 字幕中未找到有效句段。');
+
+    final sourceText = entries.map((e) => e.text).join('\n');
+
+    _setBusy(true);
+    try {
+      final projectId = await database.createProject(
+        name: trimmedName,
+        sourceText: sourceText,
+      );
+      final copied = await _copyAudioFile(projectId, audioPath);
+      await database.updateProjectAudioPath(projectId, copied);
+      await database.insertTimedSentences(
+        projectId,
+        entries.map((e) => (text: e.text, startMs: e.startMs, endMs: e.endMs)).toList(),
+      );
       await loadProjects();
       return projectId;
     } finally {
