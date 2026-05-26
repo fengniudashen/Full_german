@@ -194,6 +194,7 @@ class _PodcastPageState extends State<PodcastPage> {
 
   // ─── Whisper Transcribe ─────────────────────────────────────
 
+  /// Local whisper.cpp transcription.
   Future<void> _whisperTranscribe() async {
     if (_downloadedAudioPath == null) return;
     final settings = context.read<AppState>().settings;
@@ -260,6 +261,80 @@ class _PodcastPageState extends State<PodcastPage> {
       if (!mounted) return;
       setState(() {
         _error = 'Whisper 转写失败: $e';
+        _transcribing = false;
+      });
+    }
+  }
+
+  /// Cloud Whisper API transcription (OpenAI-compatible).
+  Future<void> _whisperTranscribeCloud() async {
+    if (_downloadedAudioPath == null) return;
+    final settings = context.read<AppState>().settings;
+
+    // Try to find an OpenAI-compatible provider with API key.
+    // Priority: openai → active provider → any provider with key.
+    String? apiBase;
+    String? apiKey;
+
+    final openai = settings.getProvider('openai');
+    if (openai.hasKey) {
+      apiBase = openai.baseUrl;
+      apiKey = openai.apiKey;
+    } else {
+      final active = settings.activeProvider;
+      if (active.hasKey) {
+        apiBase = active.baseUrl;
+        apiKey = active.apiKey;
+      }
+    }
+
+    if (apiBase == null || apiKey == null || apiKey.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请先在设置中配置 OpenAI（或兼容）API Key')),
+      );
+      return;
+    }
+
+    setState(() {
+      _transcribing = true;
+      _transcribeProgress = 0;
+      _error = null;
+    });
+
+    try {
+      setState(() => _transcribeProgress = 0.3);
+
+      final srt = await WhisperService.transcribeCloud(
+        apiBase: apiBase,
+        apiKey: apiKey,
+        audioPath: _downloadedAudioPath!,
+      );
+
+      if (!mounted) return;
+
+      final entries = SubtitleParser.parseSrt(srt);
+      final text = entries.map((e) => e.text).join('\n');
+
+      setState(() {
+        _srtContent = srt;
+        _textCtrl.text = text;
+        _transcribing = false;
+        _transcribeProgress = 1.0;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('云端转写完成！共 ${entries.length} 个句段'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = '云端 Whisper 转写失败: $e';
         _transcribing = false;
       });
     }
@@ -456,27 +531,71 @@ class _PodcastPageState extends State<PodcastPage> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      // Whisper transcribe button
-                      OutlinedButton.icon(
-                        onPressed: _transcribing ? null : _whisperTranscribe,
-                        icon: _transcribing
-                            ? SizedBox.square(
-                                dimension: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  value: _transcribeProgress > 0
-                                      ? _transcribeProgress
-                                      : null,
+                      // Whisper transcribe buttons (local + cloud)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _transcribing ? null : _whisperTranscribe,
+                              icon: _transcribing
+                                  ? SizedBox.square(
+                                      dimension: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        value: _transcribeProgress > 0
+                                            ? _transcribeProgress
+                                            : null,
+                                      ),
+                                    )
+                                  : const Icon(Icons.mic, size: 18),
+                              label: Text(
+                                _transcribing
+                                    ? '${(_transcribeProgress * 100).toInt()}%'
+                                    : '本地转写',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                side: BorderSide(
+                                  color: AppTheme.emerald.withValues(alpha: 0.4),
                                 ),
-                              )
-                            : const Icon(Icons.mic, size: 18),
-                        label: Text(_transcribing
-                            ? 'Whisper 转写中 ${(_transcribeProgress * 100).toInt()}%...'
-                            : '🎙 Whisper 自动转写 (带时间戳)'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          side: BorderSide(color: AppTheme.emerald.withValues(alpha: 0.4)),
-                          foregroundColor: AppTheme.emerald,
+                                foregroundColor: AppTheme.emerald,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: _transcribing ? null : _whisperTranscribeCloud,
+                              icon: _transcribing
+                                  ? const SizedBox.square(
+                                      dimension: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.cloud, size: 18),
+                              label: const Text(
+                                '云端转写',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                backgroundColor: AppTheme.emerald,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          '本地: whisper.cpp 离线 · 云端: OpenAI API',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontSize: 11,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
                       if (_srtContent != null)

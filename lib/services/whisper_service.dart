@@ -304,4 +304,81 @@ class WhisperService {
     }
     await sink.close();
   }
+
+  /// Transcribe audio using the OpenAI-compatible Whisper API (cloud).
+  ///
+  /// Supports OpenAI (`https://api.openai.com`) and compatible endpoints
+  /// (e.g. Groq `https://api.groq.com/openai`).
+  ///
+  /// [apiBase] – base URL (e.g. `https://api.openai.com`)
+  /// [apiKey]  – Bearer token
+  /// [audioPath] – local path to the audio file
+  /// [cloudModel] – model name, default `whisper-1` (OpenAI) or `whisper-large-v3` (Groq)
+  /// Returns SRT-format subtitle string.
+  static Future<String> transcribeCloud({
+    required String apiBase,
+    required String apiKey,
+    required String audioPath,
+    String cloudModel = 'whisper-1',
+  }) async {
+    final uri = Uri.parse(
+      '${apiBase.replaceAll(RegExp(r'/+$'), '')}/v1/audio/transcriptions',
+    );
+
+    final request = await HttpClient().openUrl('POST', uri);
+    final boundary = 'dart-boundary-${DateTime.now().millisecondsSinceEpoch}';
+    request.headers.set('Authorization', 'Bearer $apiKey');
+    request.headers.contentType =
+        ContentType('multipart', 'form-data', parameters: {'boundary': boundary});
+
+    // Build multipart body
+    final audioFile = File(audioPath);
+    if (!audioFile.existsSync()) {
+      throw Exception('音频文件不存在: $audioPath');
+    }
+
+    final audioBytes = await audioFile.readAsBytes();
+    final filename = p.basename(audioPath);
+
+    final body = <int>[];
+
+    void addField(String name, String value) {
+      body.addAll(utf8.encode('--$boundary\r\n'));
+      body.addAll(utf8.encode('Content-Disposition: form-data; name="$name"\r\n\r\n'));
+      body.addAll(utf8.encode('$value\r\n'));
+    }
+
+    // file field
+    body.addAll(utf8.encode('--$boundary\r\n'));
+    body.addAll(utf8.encode(
+      'Content-Disposition: form-data; name="file"; filename="$filename"\r\n',
+    ));
+    body.addAll(utf8.encode('Content-Type: application/octet-stream\r\n\r\n'));
+    body.addAll(audioBytes);
+    body.addAll(utf8.encode('\r\n'));
+
+    addField('model', cloudModel);
+    addField('response_format', 'srt');
+    addField('language', 'de');
+
+    body.addAll(utf8.encode('--$boundary--\r\n'));
+
+    request.contentLength = body.length;
+    request.add(body);
+
+    final response = await request.close();
+    final responseBody = await response.transform(utf8.decoder).join();
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        '云端 Whisper 转写失败 (HTTP ${response.statusCode}): $responseBody',
+      );
+    }
+
+    if (responseBody.trim().isEmpty) {
+      throw Exception('云端 Whisper 返回空结果，音频可能过短或格式不支持。');
+    }
+
+    return responseBody;
+  }
 }
