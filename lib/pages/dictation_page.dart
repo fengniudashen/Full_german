@@ -20,10 +20,13 @@ import '../widgets/glass_card.dart';
 import '../widgets/responsive_page.dart';
 import 'analysis_page.dart';
 import 'cloze_page.dart';
+import 'comprehension_page.dart';
 import 'listening_page.dart';
 import 'reading_page.dart';
+import 'scramble_page.dart';
 import 'shadowing_page.dart';
 import 'speaking_page.dart';
+import 'writing_page.dart';
 
 class DictationPage extends StatefulWidget {
   const DictationPage({super.key, required this.projectId});
@@ -162,19 +165,44 @@ class _DictationPageState extends State<DictationPage> {
             ),
           // Cloze exercise
           if (_project != null && _sentences.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.edit_note),
-              tooltip: '完形填空',
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => ClozePage(
-                      projectId: widget.projectId,
-                      sentences: _sentences.map((s) => s.text).toList(),
-                    ),
-                  ),
-                );
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.extension),
+              tooltip: '练习模式',
+              onSelected: (mode) {
+                final texts = _sentences.map((s) => s.text).toList();
+                Widget page;
+                switch (mode) {
+                  case 'cloze':
+                    page = ClozePage(projectId: widget.projectId, sentences: texts);
+                    break;
+                  case 'scramble':
+                    page = ScramblePage(projectId: widget.projectId, sentences: texts);
+                    break;
+                  case 'comprehension':
+                    page = ComprehensionPage(sentences: texts, projectName: _project!.name);
+                    break;
+                  case 'writing':
+                    page = const WritingPage();
+                    break;
+                  default:
+                    return;
+                }
+                Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
               },
+              itemBuilder: (_) => [
+                const PopupMenuItem(value: 'cloze', child: ListTile(
+                  leading: Icon(Icons.edit_note), title: Text('完形填空'),
+                  subtitle: Text('填写被挖空的单词'), dense: true, contentPadding: EdgeInsets.zero)),
+                const PopupMenuItem(value: 'scramble', child: ListTile(
+                  leading: Icon(Icons.shuffle), title: Text('句子排序'),
+                  subtitle: Text('重新排列打乱的单词'), dense: true, contentPadding: EdgeInsets.zero)),
+                const PopupMenuItem(value: 'comprehension', child: ListTile(
+                  leading: Icon(Icons.quiz), title: Text('听力理解'),
+                  subtitle: Text('AI出题测试理解程度'), dense: true, contentPadding: EdgeInsets.zero)),
+                const PopupMenuItem(value: 'writing', child: ListTile(
+                  leading: Icon(Icons.rate_review), title: Text('写作批改'),
+                  subtitle: Text('用德语写作，AI批改'), dense: true, contentPadding: EdgeInsets.zero)),
+              ],
             ),
           // AI analysis
           if (_project != null)

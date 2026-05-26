@@ -228,6 +228,26 @@ $question
 ''');
   }
 
+  /// Correct German writing and provide detailed feedback.
+  Future<String> correctWriting(String text) async {
+    return _chat('''
+你是一位专业的德语写作教师。请批改以下德语作文：
+
+**学生作文：**
+$text
+
+请提供以下内容：
+1. **总体评分** (A1-C2等级 + 百分制)
+2. **错误修正** (逐条列出语法/拼写/用词错误，标注❌原文 → ✅修正)
+3. **修改后的完整文本** (用加粗标注修改处)
+4. **语法点评** (涉及的语法规则解释)
+5. **词汇建议** (更地道的表达方式)
+6. **写作建议** (结构、逻辑、表达改进方向)
+
+请用中文解释，德语部分保持原文。
+''');
+  }
+
   /// Transcribe an audio file using the OpenAI-compatible Whisper API.
   ///
   /// Returns the transcribed German text, or throws on failure.

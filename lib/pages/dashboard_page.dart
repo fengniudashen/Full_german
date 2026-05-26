@@ -11,9 +11,12 @@ import '../widgets/metric_pill.dart';
 import '../widgets/mini_activity_chart.dart';
 import '../widgets/responsive_page.dart';
 import 'discovery_page.dart';
+import 'achievements_page.dart';
 import 'chat_practice_page.dart';
 import 'podcast_page.dart';
 import 'quick_notes_page.dart';
+import 'word_stats_page.dart';
+import 'writing_page.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -144,66 +147,43 @@ class DashboardPage extends StatelessWidget {
 
   Widget _buildQuickActions(BuildContext context) {
     final theme = Theme.of(context);
-    return Row(
-      children: [
-        Expanded(
-          child: _QuickActionCard(
-            icon: Icons.lightbulb,
-            label: '灵光一闪',
-            color: AppTheme.gold,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const QuickNotesPage()),
+    final actions = [
+      _QuickAction(Icons.lightbulb, '灵光一闪', AppTheme.gold,
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const QuickNotesPage()))),
+      _QuickAction(Icons.waves, '句海拾遗', theme.colorScheme.primary,
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DiscoveryPage()))),
+      _QuickAction(Icons.chat, '德语对话', Colors.teal,
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChatPracticePage()))),
+      _QuickAction(Icons.rate_review, '写作批改', Colors.indigo,
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const WritingPage()))),
+      _QuickAction(Icons.podcasts, '播客导入', Colors.deepPurple,
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PodcastPage()))),
+      _QuickAction(Icons.emoji_events, '学习成就', Colors.amber.shade700,
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AchievementsPage()))),
+      _QuickAction(Icons.bar_chart, '词频分析', Colors.cyan,
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const WordStatsPage()))),
+      _QuickAction(Icons.text_fields, '词海拾遗', AppTheme.emerald,
+          () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DiscoveryPage()))),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = constraints.maxWidth >= 800 ? 4 : constraints.maxWidth >= 500 ? 3 : 2;
+        final itemWidth = (constraints.maxWidth - (cols - 1) * 10) / cols;
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: actions.map((a) => SizedBox(
+            width: itemWidth,
+            child: _QuickActionCard(
+              icon: a.icon,
+              label: a.label,
+              color: a.color,
+              onTap: a.onTap,
             ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _QuickActionCard(
-            icon: Icons.waves,
-            label: '句海拾遗',
-            color: theme.colorScheme.primary,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const DiscoveryPage()),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _QuickActionCard(
-            icon: Icons.text_fields,
-            label: '词海拾遗',
-            color: AppTheme.emerald,
-            onTap: () {
-              final page = DiscoveryPage();
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => page),
-              );
-            },
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _QuickActionCard(
-            icon: Icons.podcasts,
-            label: '播客导入',
-            color: Colors.deepPurple,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const PodcastPage()),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _QuickActionCard(
-            icon: Icons.chat,
-            label: '德语对话',
-            color: Colors.teal,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ChatPracticePage()),
-            ),
-          ),
-        ),
-      ],
+          )).toList(),
+        );
+      },
     );
   }
 
@@ -390,4 +370,12 @@ class _RecentSessionsCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _QuickAction {
+  const _QuickAction(this.icon, this.label, this.color, this.onTap);
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
 }
