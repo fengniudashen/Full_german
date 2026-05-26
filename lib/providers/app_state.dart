@@ -266,6 +266,17 @@ class AppState extends ChangeNotifier {
     return file;
   }
 
+  /// Export wrong words in Anki-compatible TSV format.
+  Future<File> exportAnkiTsv({int? projectId}) async {
+    final rows = await database.getWrongWords(projectId: projectId);
+    final tsv = CsvExporter.buildAnkiTsv(rows);
+    final dir = await getTemporaryDirectory();
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    final file = File(p.join(dir.path, 'deutschflow_anki_$ts.txt'));
+    await file.writeAsString(tsv, flush: true);
+    return file;
+  }
+
   // ─── Internal ───────────────────────────────────────────────
   Future<String> _copyAudioFile(int projectId, String originalPath) async {
     final source = File(originalPath);

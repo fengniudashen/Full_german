@@ -271,6 +271,20 @@ $question
       '不要输出任何思考过程或 <think> 标签，直接给出最终答案。'
       '使用 Markdown 格式排版，善用标题、加粗、列表和表格让内容清晰易读。';
 
+  /// Raw chat with custom system message — used for conversation practice.
+  Future<String> chatRaw(String prompt, {String? systemMessage}) async {
+    if (!provider.hasKey) {
+      throw Exception('请先在设置中配置 ${provider.name} 的 API Key。');
+    }
+    final sys = systemMessage ??
+        '你是一位友善的德语母语对话伙伴。用德语和用户对话，适时纠正语法错误。'
+        '不要输出任何思考过程或 <think> 标签，直接给出回复。';
+    if (provider.id == 'claude') {
+      return _chatClaudeRaw(prompt, sys);
+    }
+    return _chatOpenAIRaw(prompt, sys);
+  }
+
   Future<String> _chat(String prompt) async {
     if (!provider.hasKey) {
       return '⚠️ 请先在设置中配置 ${provider.name} 的 API Key。\n\n'
@@ -394,5 +408,77 @@ $question
     return text
         .replaceAll(RegExp(r'<think>[\s\S]*?</think>', multiLine: true), '')
         .trim();
+  }
+
+  /// OpenAI-compatible raw chat with custom system message.
+  Future<String> _chatOpenAIRaw(String prompt, String systemMsg) async {
+    final client = HttpClient();
+    try {
+      final uri = Uri.parse('${provider.baseUrl}/v1/chat/completions');
+      final request = await client.postUrl(uri);
+      request.headers.set('Content-Type', 'application/json; charset=utf-8');
+      request.headers.set('Authorization', 'Bearer ${provider.apiKey}');
+
+      final body = jsonEncode({
+        'model': provider.model,
+        'messages': [
+          {'role': 'system', 'content': systemMsg},
+          {'role': 'user', 'content': prompt},
+        ],
+        'temperature': 0.7,
+        'max_tokens': 1000,
+      });
+      request.add(utf8.encode(body));
+
+      final response = await request.close();
+      final responseBody = await response.transform(utf8.decoder).join();
+
+      if (response.statusCode != 200) {
+        throw Exception('${provider.name} 错误 (${response.statusCode})');
+      }
+
+      final json = jsonDecode(responseBody) as Map<String, dynamic>;
+      final choices = json['choices'] as List<dynamic>?;
+      if (choices == null || choices.isEmpty) throw Exception('无响应');
+      return _stripThinkTags((choices[0]['message']['content'] as String).trim());
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Claude raw chat with custom system message.
+  Future<String> _chatClaudeRaw(String prompt, String systemMsg) async {
+    final client = HttpClient();
+    try {
+      final uri = Uri.parse('${provider.baseUrl}/v1/messages');
+      final request = await client.postUrl(uri);
+      request.headers.set('Content-Type', 'application/json; charset=utf-8');
+      request.headers.set('x-api-key', provider.apiKey);
+      request.headers.set('anthropic-version', '2023-06-01');
+
+      final body = jsonEncode({
+        'model': provider.model,
+        'max_tokens': 1000,
+        'system': systemMsg,
+        'messages': [
+          {'role': 'user', 'content': prompt},
+        ],
+      });
+      request.add(utf8.encode(body));
+
+      final response = await request.close();
+      final responseBody = await response.transform(utf8.decoder).join();
+
+      if (response.statusCode != 200) {
+        throw Exception('Claude 错误 (${response.statusCode})');
+      }
+
+      final json = jsonDecode(responseBody) as Map<String, dynamic>;
+      final content = json['content'] as List<dynamic>?;
+      if (content == null || content.isEmpty) throw Exception('无响应');
+      return _stripThinkTags((content[0]['text'] as String).trim());
+    } finally {
+      client.close();
+    }
   }
 }

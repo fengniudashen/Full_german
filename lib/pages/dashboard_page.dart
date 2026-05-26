@@ -11,6 +11,7 @@ import '../widgets/metric_pill.dart';
 import '../widgets/mini_activity_chart.dart';
 import '../widgets/responsive_page.dart';
 import 'discovery_page.dart';
+import 'chat_practice_page.dart';
 import 'podcast_page.dart';
 import 'quick_notes_page.dart';
 
@@ -188,6 +189,17 @@ class DashboardPage extends StatelessWidget {
             color: Colors.deepPurple,
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const PodcastPage()),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _QuickActionCard(
+            icon: Icons.chat,
+            label: '德语对话',
+            color: Colors.teal,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ChatPracticePage()),
             ),
           ),
         ),

@@ -17,6 +17,25 @@ class CsvExporter {
     return buf.toString();
   }
 
+  /// Export in Anki-compatible TSV format.
+  /// Columns: Front (German word) \t Back (context sentence + correct form)
+  /// Anki imports TSV with tab separator by default.
+  static String buildAnkiTsv(List<WrongWord> rows) {
+    final buf = StringBuffer();
+    buf.writeln('#separator:tab');
+    buf.writeln('#html:true');
+    buf.writeln('#tags column:3');
+    for (final r in rows) {
+      final front = r.correctForm;
+      final back = '<b>${r.correctForm}</b><br><br>'
+          '<i>${r.sentenceText}</i><br><br>'
+          '来源: ${r.projectName}';
+      final tags = r.mastered ? 'mastered' : 'learning';
+      buf.writeln('${_escapeTsv(front)}\t${_escapeTsv(back)}\t$tags');
+    }
+    return buf.toString();
+  }
+
   static String _escape(String value) {
     final escaped = value.replaceAll('"', '""');
     final needsQuotes = escaped.contains(',') ||
@@ -24,5 +43,12 @@ class CsvExporter {
         escaped.contains('\n') ||
         escaped.contains('\r');
     return needsQuotes ? '"$escaped"' : escaped;
+  }
+
+  static String _escapeTsv(String value) {
+    return value
+        .replaceAll('\t', ' ')
+        .replaceAll('\n', '<br>')
+        .replaceAll('\r', '');
   }
 }

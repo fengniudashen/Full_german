@@ -19,7 +19,9 @@ import '../widgets/comparison_result_sheet.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/responsive_page.dart';
 import 'analysis_page.dart';
+import 'cloze_page.dart';
 import 'listening_page.dart';
+import 'reading_page.dart';
 import 'shadowing_page.dart';
 import 'speaking_page.dart';
 
@@ -134,6 +136,39 @@ class _DictationPageState extends State<DictationPage> {
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => SpeakingPage(
+                      projectId: widget.projectId,
+                      sentences: _sentences.map((s) => s.text).toList(),
+                    ),
+                  ),
+                );
+              },
+            ),
+          // Reading mode
+          if (_project != null && _sentences.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.menu_book),
+              tooltip: '阅读模式（点击查词）',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => ReadingPage(
+                      projectId: widget.projectId,
+                      sentences: _sentences.map((s) => s.text).toList(),
+                      projectName: _project!.name,
+                    ),
+                  ),
+                );
+              },
+            ),
+          // Cloze exercise
+          if (_project != null && _sentences.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.edit_note),
+              tooltip: '完形填空',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => ClozePage(
                       projectId: widget.projectId,
                       sentences: _sentences.map((s) => s.text).toList(),
                     ),

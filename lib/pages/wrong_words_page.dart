@@ -157,6 +157,12 @@ class _WrongWordsPageState extends State<WrongWordsPage> {
                 : const Icon(Icons.ios_share, size: 18),
             label: const Text('导出 CSV'),
           ),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(
+            onPressed: _exporting ? null : _exportAnki,
+            icon: const Icon(Icons.style, size: 18),
+            label: const Text('Anki'),
+          ),
         ],
       ),
     );
@@ -182,6 +188,39 @@ class _WrongWordsPageState extends State<WrongWordsPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('已导出到: $outputPath')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('导出失败: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  Future<void> _exportAnki() async {
+    setState(() => _exporting = true);
+    try {
+      final file = await context
+          .read<AppState>()
+          .exportAnkiTsv(projectId: _filterProjectId);
+
+      final outputPath = await FilePicker.platform.saveFile(
+        dialogTitle: '导出 Anki 卡片',
+        fileName: 'deutschflow_anki.txt',
+        type: FileType.custom,
+        allowedExtensions: ['txt'],
+      );
+
+      if (outputPath != null) {
+        await File(file.path).copy(outputPath);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('已导出 Anki 文件: $outputPath')),
           );
         }
       }
