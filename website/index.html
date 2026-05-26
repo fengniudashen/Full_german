@@ -1,26 +1,23 @@
 ﻿<!DOCTYPE html>
 <!--
-  鈺斺晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晽
-  鈺? DeutschFlow Landing Page                        鈺?
-  鈺? 濡備綍宓屽叆鎴浘锛堝崟鏂囦欢锛屾棤闇€澶栭儴鍥剧墖锛夛細             鈺?
-  鈺?                                                 鈺?
-  鈺? 1. 鍦?PowerShell 涓繍琛屼互涓嬪懡浠よ浆鎹㈡埅鍥句负 Base64锛? 鈺?
-  鈺?    [Convert]::ToBase64String(                   鈺?
-  鈺?      [IO.File]::ReadAllBytes("浣犵殑鎴浘.png")     鈺?
-  鈺?    ) | Set-Clipboard                            鈺?
-  鈺?                                                 鈺?
-  鈺? 2. 鎵惧埌 HTML 涓殑 馃摳 鍗犱綅鍖哄煙                     鈺?
-  鈺? 3. 灏嗗崰浣嶅唴瀹规浛鎹负锛?                             鈺?
-  鈺?    <img src="data:image/png;base64,绮樿创" alt="">鈺?
-  鈺?                                                 鈺?
-  鈺? 鍏?9 涓埅鍥句綅缃緟鏇挎崲                              鈺?
-  鈺氣晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨暆
+  如何嵌入截图（单文件，无需外部图片）：
+
+  1. 在 PowerShell 中运行以下命令转换截图为 Base64：
+     [Convert]::ToBase64String(
+       [IO.File]::ReadAllBytes("你的截图.png")
+     ) | Set-Clipboard
+
+  2. 找到 HTML 中的 IMAGE_PLACEHOLDER 占位区域
+  3. 将占位 div 替换为：
+     <img src="data:image/png;base64,粘贴内容" alt="描述">
+
+  共 9 个截图位置待替换
 -->
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DeutschFlow 鈥?AI 椹卞姩鐨勫痉璇惉鍐欏涔犲簲鐢?/title>
+  <title>DeutschFlow — AI 驱动的德语听写学习应用</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+SC:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -45,9 +42,7 @@
       --radius-sm: 10px;
       --radius-lg: 24px;
     }
-
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     body {
       font-family: 'Inter', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
       background: var(--bg);
@@ -55,538 +50,235 @@
       line-height: 1.7;
       overflow-x: hidden;
     }
-
-    /* 鈺愨晲鈺?Background Effects 鈺愨晲鈺?*/
     .bg-grid {
-      position: fixed;
-      inset: 0;
+      position: fixed; inset: 0;
       background-image:
         linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
       background-size: 60px 60px;
-      pointer-events: none;
-      z-index: 0;
+      pointer-events: none; z-index: 0;
     }
-
     .bg-glow-1 {
-      position: fixed;
-      width: 800px; height: 800px;
+      position: fixed; width: 800px; height: 800px;
       background: radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%);
       top: -200px; right: -200px;
       pointer-events: none; z-index: 0;
     }
     .bg-glow-2 {
-      position: fixed;
-      width: 600px; height: 600px;
+      position: fixed; width: 600px; height: 600px;
       background: radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 70%);
       bottom: 10%; left: -100px;
       pointer-events: none; z-index: 0;
     }
-
-    /* 鈺愨晲鈺?Layout 鈺愨晲鈺?*/
     .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 24px;
-      position: relative;
-      z-index: 1;
+      max-width: 1200px; margin: 0 auto; padding: 0 24px;
+      position: relative; z-index: 1;
     }
+    section { padding: 100px 0; }
 
-    section {
-      padding: 100px 0;
-    }
-
-    /* 鈺愨晲鈺?Navigation 鈺愨晲鈺?*/
+    /* Nav */
     nav {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 100;
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
       background: rgba(10, 15, 26, 0.8);
       backdrop-filter: blur(20px);
       border-bottom: 1px solid var(--border);
     }
-    nav .container {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: 64px;
-    }
+    nav .container { display: flex; align-items: center; justify-content: space-between; height: 64px; }
     .nav-logo {
       display: flex; align-items: center; gap: 10px;
-      font-weight: 800; font-size: 1.2rem;
-      color: var(--text-bright);
-      text-decoration: none;
+      font-weight: 800; font-size: 1.2rem; color: var(--text-bright); text-decoration: none;
     }
     .nav-logo .logo-icon {
       width: 32px; height: 32px;
       background: linear-gradient(135deg, var(--emerald), var(--accent-blue));
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
       font-size: 16px; color: white;
     }
     .nav-links { display: flex; gap: 32px; list-style: none; }
-    .nav-links a {
-      color: var(--text-dim);
-      text-decoration: none;
-      font-size: 0.9rem;
-      font-weight: 500;
-      transition: color 0.2s;
-    }
+    .nav-links a { color: var(--text-dim); text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: color 0.2s; }
     .nav-links a:hover { color: var(--emerald); }
     .nav-cta {
-      padding: 8px 20px;
-      background: var(--emerald);
-      color: white !important;
-      border-radius: 8px;
-      font-weight: 600;
-      transition: transform 0.2s, box-shadow 0.2s;
+      padding: 8px 20px; background: var(--emerald); color: white !important;
+      border-radius: 8px; font-weight: 600; transition: transform 0.2s, box-shadow 0.2s;
     }
-    .nav-cta:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 20px rgba(16,185,129,0.4);
-    }
+    .nav-cta:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(16,185,129,0.4); }
 
-    /* 鈺愨晲鈺?Hero 鈺愨晲鈺?*/
-    .hero {
-      padding: 160px 0 120px;
-      text-align: center;
-    }
+    /* Hero */
+    .hero { padding: 160px 0 120px; text-align: center; }
     .hero-badge {
       display: inline-flex; align-items: center; gap: 8px;
-      padding: 6px 16px;
-      background: var(--emerald-glow);
-      border: 1px solid rgba(16,185,129,0.2);
-      border-radius: 100px;
-      font-size: 0.85rem;
-      color: var(--emerald);
-      font-weight: 600;
-      margin-bottom: 24px;
+      padding: 6px 16px; background: var(--emerald-glow);
+      border: 1px solid rgba(16,185,129,0.2); border-radius: 100px;
+      font-size: 0.85rem; color: var(--emerald); font-weight: 600; margin-bottom: 24px;
     }
-    .hero-badge .dot {
-      width: 6px; height: 6px;
-      background: var(--emerald);
-      border-radius: 50%;
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
-    .hero h1 {
-      font-size: clamp(2.8rem, 6vw, 4.5rem);
-      font-weight: 900;
-      line-height: 1.1;
-      letter-spacing: -0.03em;
-      margin-bottom: 24px;
-    }
+    .hero-badge .dot { width: 6px; height: 6px; background: var(--emerald); border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .hero h1 { font-size: clamp(2.8rem, 6vw, 4.5rem); font-weight: 900; line-height: 1.1; letter-spacing: -0.03em; margin-bottom: 24px; }
     .hero h1 .gradient {
       background: linear-gradient(135deg, var(--emerald), #34d399, var(--accent-blue));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
-    .hero-sub {
-      font-size: 1.2rem;
-      color: var(--text-dim);
-      max-width: 640px;
-      margin: 0 auto 40px;
-      line-height: 1.8;
-    }
-    .hero-actions {
-      display: flex; gap: 16px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
+    .hero-sub { font-size: 1.2rem; color: var(--text-dim); max-width: 640px; margin: 0 auto 40px; line-height: 1.8; }
+    .hero-actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
     .btn {
       display: inline-flex; align-items: center; gap: 8px;
-      padding: 14px 32px;
-      border-radius: var(--radius-sm);
-      font-size: 1rem;
-      font-weight: 600;
-      text-decoration: none;
-      transition: all 0.3s;
-      cursor: pointer;
-      border: none;
+      padding: 14px 32px; border-radius: var(--radius-sm);
+      font-size: 1rem; font-weight: 600; text-decoration: none; transition: all 0.3s; cursor: pointer; border: none;
     }
     .btn-primary {
       background: linear-gradient(135deg, var(--emerald), var(--emerald-dark));
-      color: white;
-      box-shadow: 0 4px 24px rgba(16,185,129,0.3);
+      color: white; box-shadow: 0 4px 24px rgba(16,185,129,0.3);
     }
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 32px rgba(16,185,129,0.5);
-    }
-    .btn-outline {
-      background: transparent;
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-    .btn-outline:hover {
-      border-color: var(--emerald);
-      color: var(--emerald);
-      background: var(--emerald-glow);
-    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(16,185,129,0.5); }
+    .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-outline:hover { border-color: var(--emerald); color: var(--emerald); background: var(--emerald-glow); }
 
-    /* 鈺愨晲鈺?Stats Row 鈺愨晲鈺?*/
-    .stats-row {
-      display: flex;
-      justify-content: center;
-      gap: 48px;
-      margin-top: 60px;
-      flex-wrap: wrap;
-    }
-    .stat-item {
-      text-align: center;
-    }
+    /* Stats */
+    .stats-row { display: flex; justify-content: center; gap: 48px; margin-top: 60px; flex-wrap: wrap; }
+    .stat-item { text-align: center; }
     .stat-num {
-      font-size: 2.2rem;
-      font-weight: 800;
+      font-size: 2.2rem; font-weight: 800;
       background: linear-gradient(135deg, var(--emerald), var(--accent-blue));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
-    .stat-label {
-      font-size: 0.85rem;
-      color: var(--text-dim);
-      margin-top: 4px;
-    }
+    .stat-label { font-size: 0.85rem; color: var(--text-dim); margin-top: 4px; }
 
-    /* 鈺愨晲鈺?Hero Screenshot 鈺愨晲鈺?*/
-    .hero-screenshot {
-      margin-top: 80px;
-      position: relative;
-    }
+    /* Screenshot */
+    .hero-screenshot { margin-top: 80px; position: relative; }
     .screenshot-frame {
-      max-width: 1000px;
-      margin: 0 auto;
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-      border: 1px solid var(--border);
-      background: var(--bg-card);
-      box-shadow:
-        0 0 0 1px rgba(255,255,255,0.05),
-        0 20px 80px rgba(0,0,0,0.5),
-        0 0 120px rgba(16,185,129,0.1);
+      max-width: 1000px; margin: 0 auto; border-radius: var(--radius-lg);
+      overflow: hidden; border: 1px solid var(--border); background: var(--bg-card);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.05), 0 20px 80px rgba(0,0,0,0.5), 0 0 120px rgba(16,185,129,0.1);
     }
-    .screenshot-placeholder {
-      width: 100%;
-      aspect-ratio: 16/9;
+    .img-slot {
+      width: 100%; aspect-ratio: 16/9;
       background: linear-gradient(135deg, rgba(16,185,129,0.05), rgba(59,130,246,0.05));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--text-dim);
-      font-size: 1.1rem;
-      font-weight: 500;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-dim); font-size: 0.95rem; text-align: center; padding: 20px;
     }
-    .screenshot-placeholder img, .gallery-placeholder img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .img-tip {
-      padding: 20px;
-      text-align: center;
-      color: var(--text-dim);
-      font-size: 0.85rem;
-      line-height: 1.8;
-    }
-    .img-tip code {
-      background: rgba(255,255,255,0.08);
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 0.8rem;
-    }
+    .img-slot img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-    /* 鈺愨晲鈺?Section Titles 鈺愨晲鈺?*/
-    .section-header {
-      text-align: center;
-      margin-bottom: 64px;
-    }
+    /* Section Headers */
+    .section-header { text-align: center; margin-bottom: 64px; }
     .section-tag {
-      display: inline-block;
-      padding: 4px 14px;
-      background: var(--emerald-glow);
-      border: 1px solid rgba(16,185,129,0.15);
-      border-radius: 100px;
-      font-size: 0.8rem;
-      color: var(--emerald);
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 16px;
+      display: inline-block; padding: 4px 14px; background: var(--emerald-glow);
+      border: 1px solid rgba(16,185,129,0.15); border-radius: 100px;
+      font-size: 0.8rem; color: var(--emerald); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px;
     }
-    .section-header h2 {
-      font-size: clamp(2rem, 4vw, 2.8rem);
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      margin-bottom: 16px;
-    }
-    .section-header p {
-      color: var(--text-dim);
-      font-size: 1.1rem;
-      max-width: 600px;
-      margin: 0 auto;
-    }
+    .section-header h2 { font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.02em; margin-bottom: 16px; }
+    .section-header p { color: var(--text-dim); font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
 
-    /* 鈺愨晲鈺?Feature Cards Grid 鈺愨晲鈺?*/
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-      gap: 20px;
-    }
+    /* Feature Cards */
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; }
     .feature-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 32px;
-      transition: all 0.3s;
-      position: relative;
-      overflow: hidden;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 32px; transition: all 0.3s; position: relative; overflow: hidden;
     }
     .feature-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 2px;
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
       background: linear-gradient(90deg, transparent, var(--card-accent, var(--emerald)), transparent);
-      opacity: 0;
-      transition: opacity 0.3s;
+      opacity: 0; transition: opacity 0.3s;
     }
     .feature-card:hover {
-      background: var(--bg-card-hover);
-      border-color: rgba(255,255,255,0.12);
-      transform: translateY(-4px);
-      box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+      background: var(--bg-card-hover); border-color: rgba(255,255,255,0.12);
+      transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.3);
     }
     .feature-card:hover::before { opacity: 1; }
     .feature-icon {
-      width: 48px; height: 48px;
-      border-radius: 12px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 24px;
-      margin-bottom: 20px;
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 20px;
     }
-    .feature-card h3 {
-      font-size: 1.15rem;
-      font-weight: 700;
-      margin-bottom: 10px;
-      color: var(--text-bright);
-    }
-    .feature-card p {
-      color: var(--text-dim);
-      font-size: 0.92rem;
-      line-height: 1.7;
-    }
-    .feature-card .tag-list {
-      display: flex; flex-wrap: wrap; gap: 6px;
-      margin-top: 16px;
-    }
-    .feature-card .tag {
-      padding: 3px 10px;
-      background: rgba(255,255,255,0.05);
-      border-radius: 6px;
-      font-size: 0.75rem;
-      color: var(--text-dim);
-      border: 1px solid rgba(255,255,255,0.06);
+    .feature-card h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 10px; color: var(--text-bright); }
+    .feature-card p { color: var(--text-dim); font-size: 0.92rem; line-height: 1.7; }
+    .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+    .tag {
+      padding: 3px 10px; background: rgba(255,255,255,0.05); border-radius: 6px;
+      font-size: 0.75rem; color: var(--text-dim); border: 1px solid rgba(255,255,255,0.06);
     }
 
-    /* 鈺愨晲鈺?Workflow Section 鈺愨晲鈺?*/
-    .workflow-steps {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 24px;
-      position: relative;
-    }
+    /* Workflow */
+    .workflow-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; position: relative; }
     .workflow-steps::before {
-      content: '';
-      position: absolute;
-      top: 40px;
-      left: 12.5%;
-      right: 12.5%;
-      height: 2px;
-      background: linear-gradient(90deg, var(--emerald), var(--accent-blue), var(--accent-purple), var(--accent-amber));
-      z-index: 0;
+      content: ''; position: absolute; top: 40px; left: 12.5%; right: 12.5%; height: 2px;
+      background: linear-gradient(90deg, var(--emerald), var(--accent-blue), var(--accent-purple), var(--accent-amber)); z-index: 0;
     }
-    .workflow-step {
-      text-align: center;
-      position: relative;
-      z-index: 1;
-    }
+    .workflow-step { text-align: center; position: relative; z-index: 1; }
     .step-number {
-      width: 80px; height: 80px;
-      border-radius: 50%;
+      width: 80px; height: 80px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 20px;
-      font-size: 28px;
-      font-weight: 800;
-      border: 2px solid;
-      background: var(--bg);
+      margin: 0 auto 20px; font-size: 28px; font-weight: 800; border: 2px solid; background: var(--bg);
     }
     .workflow-step:nth-child(1) .step-number { border-color: var(--emerald); color: var(--emerald); }
     .workflow-step:nth-child(2) .step-number { border-color: var(--accent-blue); color: var(--accent-blue); }
     .workflow-step:nth-child(3) .step-number { border-color: var(--accent-purple); color: var(--accent-purple); }
     .workflow-step:nth-child(4) .step-number { border-color: var(--accent-amber); color: var(--accent-amber); }
-    .workflow-step h4 {
-      font-size: 1rem;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-    .workflow-step p {
-      font-size: 0.85rem;
-      color: var(--text-dim);
-    }
+    .workflow-step h4 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+    .workflow-step p { font-size: 0.85rem; color: var(--text-dim); }
 
-    /* 鈺愨晲鈺?Screenshot Gallery 鈺愨晲鈺?*/
-    .gallery-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 20px;
-    }
+    /* Gallery */
+    .gallery-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
     .gallery-item {
-      border-radius: var(--radius);
-      overflow: hidden;
-      border: 1px solid var(--border);
-      background: var(--bg-card);
-      transition: all 0.3s;
+      border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border);
+      background: var(--bg-card); transition: all 0.3s;
     }
-    .gallery-item:hover {
-      border-color: rgba(255,255,255,0.15);
-      transform: translateY(-4px);
-      box-shadow: 0 12px 40px rgba(0,0,0,0.3);
-    }
-    .gallery-placeholder {
-      width: 100%;
-      aspect-ratio: 16/10;
+    .gallery-item:hover { border-color: rgba(255,255,255,0.15); transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
+    .gallery-slot {
+      width: 100%; aspect-ratio: 16/10;
       background: linear-gradient(135deg, rgba(16,185,129,0.03), rgba(59,130,246,0.03));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--text-dim);
-      font-size: 0.95rem;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-dim); font-size: 0.9rem; text-align: center; padding: 16px;
     }
-    .gallery-placeholder img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .gallery-caption {
-      padding: 16px 20px;
-      font-weight: 600;
-      font-size: 0.95rem;
-      border-top: 1px solid var(--border);
-    }
+    .gallery-slot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .gallery-caption { padding: 16px 20px; font-weight: 600; font-size: 0.95rem; border-top: 1px solid var(--border); }
 
-    /* 鈺愨晲鈺?AI Section 鈺愨晲鈺?*/
-    .ai-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-    }
+    /* AI Grid */
+    .ai-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
     .ai-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 24px;
-      text-align: center;
-      transition: all 0.3s;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 24px; text-align: center; transition: all 0.3s;
     }
-    .ai-card:hover {
-      background: var(--bg-card-hover);
-      transform: translateY(-3px);
-    }
+    .ai-card:hover { background: var(--bg-card-hover); transform: translateY(-3px); }
     .ai-card .emoji { font-size: 2rem; margin-bottom: 12px; }
     .ai-card h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 6px; }
     .ai-card p { font-size: 0.82rem; color: var(--text-dim); }
 
-    /* 鈺愨晲鈺?Tech Stack 鈺愨晲鈺?*/
-    .tech-grid {
-      display: flex;
-      justify-content: center;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
+    /* Tech */
+    .tech-grid { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
     .tech-pill {
-      display: flex; align-items: center; gap: 8px;
-      padding: 10px 20px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 100px;
-      font-size: 0.9rem;
-      font-weight: 500;
-      transition: all 0.2s;
+      display: flex; align-items: center; gap: 8px; padding: 10px 20px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 100px;
+      font-size: 0.9rem; font-weight: 500; transition: all 0.2s;
     }
-    .tech-pill:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--emerald);
-    }
-    .tech-pill .tech-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-    }
+    .tech-pill:hover { background: var(--bg-card-hover); border-color: var(--emerald); }
+    .tech-dot { width: 8px; height: 8px; border-radius: 50%; }
 
-    /* 鈺愨晲鈺?Provider Grid 鈺愨晲鈺?*/
-    .provider-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-top: 40px;
-    }
+    /* Providers */
+    .provider-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 40px; }
     .provider-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 20px;
-      text-align: center;
-      transition: all 0.3s;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 20px; text-align: center; transition: all 0.3s;
     }
-    .provider-card:hover {
-      background: var(--bg-card-hover);
-      transform: translateY(-2px);
-    }
+    .provider-card:hover { background: var(--bg-card-hover); transform: translateY(-2px); }
     .provider-card .name { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
     .provider-card .model { font-size: 0.78rem; color: var(--text-dim); font-family: monospace; }
 
-    /* 鈺愨晲鈺?CTA Section 鈺愨晲鈺?*/
-    .cta-section {
-      text-align: center;
-      padding: 120px 0;
-      position: relative;
-    }
+    /* CTA */
+    .cta-section { text-align: center; padding: 120px 0; position: relative; }
     .cta-section::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse at center, rgba(16,185,129,0.08), transparent 70%);
-      pointer-events: none;
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at center, rgba(16,185,129,0.08), transparent 70%); pointer-events: none;
     }
-    .cta-section h2 {
-      font-size: clamp(2rem, 4vw, 3rem);
-      font-weight: 900;
-      margin-bottom: 16px;
-    }
-    .cta-section p {
-      color: var(--text-dim);
-      font-size: 1.1rem;
-      margin-bottom: 36px;
-    }
+    .cta-section h2 { font-size: clamp(2rem, 4vw, 3rem); font-weight: 900; margin-bottom: 16px; }
+    .cta-section p { color: var(--text-dim); font-size: 1.1rem; margin-bottom: 36px; }
 
-    /* 鈺愨晲鈺?Footer 鈺愨晲鈺?*/
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 40px 0;
-      text-align: center;
-      color: var(--text-dim);
-      font-size: 0.85rem;
-    }
+    /* Footer */
+    footer { border-top: 1px solid var(--border); padding: 40px 0; text-align: center; color: var(--text-dim); font-size: 0.85rem; }
     footer a { color: var(--emerald); text-decoration: none; }
 
-    /* 鈺愨晲鈺?Responsive 鈺愨晲鈺?*/
+    /* Responsive */
     @media (max-width: 900px) {
-      .workflow-steps {
-        grid-template-columns: repeat(2, 1fr);
-      }
+      .workflow-steps { grid-template-columns: repeat(2, 1fr); }
       .workflow-steps::before { display: none; }
       .ai-grid { grid-template-columns: repeat(2, 1fr); }
       .provider-grid { grid-template-columns: repeat(2, 1fr); }
@@ -602,16 +294,9 @@
       section { padding: 60px 0; }
     }
 
-    /* 鈺愨晲鈺?Animations 鈺愨晲鈺?*/
-    .fade-in {
-      opacity: 0;
-      transform: translateY(30px);
-      transition: opacity 0.6s ease, transform 0.6s ease;
-    }
-    .fade-in.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    /* Animations */
+    .fade-in { opacity: 0; transform: translateY(30px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .fade-in.visible { opacity: 1; transform: translateY(0); }
   </style>
 </head>
 <body>
@@ -620,7 +305,7 @@
 <div class="bg-glow-1"></div>
 <div class="bg-glow-2"></div>
 
-<!-- 鈺愨晲鈺?Navigation 鈺愨晲鈺?-->
+<!-- Navigation -->
 <nav>
   <div class="container">
     <a href="#" class="nav-logo">
@@ -628,432 +313,276 @@
       DeutschFlow
     </a>
     <ul class="nav-links">
-      <li><a href="#features">鏍稿績鍔熻兘</a></li>
-      <li><a href="#workflow">瀛︿範鏂规硶</a></li>
-      <li><a href="#ai">AI 鑳藉姏</a></li>
-      <li><a href="#screenshots">鐣岄潰灞曠ず</a></li>
-      <li><a href="#tech">鎶€鏈爤</a></li>
-      <li><a href="#download" class="nav-cta">涓嬭浇</a></li>
+      <li><a href="#features">核心功能</a></li>
+      <li><a href="#workflow">学习方法</a></li>
+      <li><a href="#ai">AI 能力</a></li>
+      <li><a href="#screenshots">界面展示</a></li>
+      <li><a href="#tech">技术栈</a></li>
+      <li><a href="#download" class="nav-cta">下载</a></li>
     </ul>
   </div>
 </nav>
 
-<!-- 鈺愨晲鈺?Hero 鈺愨晲鈺?-->
+<!-- Hero -->
 <section class="hero">
   <div class="container">
     <div class="hero-badge">
       <span class="dot"></span>
-      Flutter + AI 路 鍏ㄥ钩鍙版敮鎸?
+      Flutter + AI · 全平台支持
     </div>
     <h1>
       <span class="gradient">DeutschFlow</span><br>
-      AI 椹卞姩鐨勫痉璇惉鍐欏涔犲簲鐢?
+      AI 驱动的德语听写学习应用
     </h1>
     <p class="hero-sub">
-      铻嶅悎銆屽皻闆娉曘€嶅涔犳柟娉曡涓?AI 娣卞害杈呭姪锛屾墦閫犲惉鍐欌啋绮炬瀽鈫掕窡璇烩啋鑳岃鐨勫畬鏁村痉璇涔犻棴鐜€?
-      鏀寔鏈湴 Whisper 璇煶璇嗗埆銆? 澶?LLM 鎻愪緵鍟嗐€?6 涓囪瘝鍐呯疆璇嶅吀銆?
+      融合「尚雯婕法」学习方法论与 AI 深度辅助，打造听写、精析、跟读、背诵的完整德语学习闭环。
+      支持本地 Whisper 语音识别、8 大 LLM 提供商、36 万词内置词典。
     </p>
     <div class="hero-actions">
-      <a href="#download" class="btn btn-primary">
-        猬囷笍 涓嬭浇 Windows 鐗?
-      </a>
-      <a href="https://github.com/fengniudashen/Full_german" class="btn btn-outline" target="_blank">
-        猸?GitHub 婧愮爜
-      </a>
+      <a href="#download" class="btn btn-primary">下载 Windows 版</a>
+      <a href="https://github.com/fengniudashen/Full_german" class="btn btn-outline" target="_blank">GitHub 源码</a>
     </div>
 
     <div class="stats-row">
-      <div class="stat-item">
-        <div class="stat-num">50+</div>
-        <div class="stat-label">鏍稿績鍔熻兘</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-num">12+</div>
-        <div class="stat-label">AI 鑳藉姏</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-num">363K</div>
-        <div class="stat-label">鍐呯疆璇嶆潯</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-num">8</div>
-        <div class="stat-label">LLM 鎻愪緵鍟?/div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-num">4</div>
-        <div class="stat-label">鏀寔骞冲彴</div>
-      </div>
+      <div class="stat-item"><div class="stat-num">50+</div><div class="stat-label">核心功能</div></div>
+      <div class="stat-item"><div class="stat-num">12+</div><div class="stat-label">AI 能力</div></div>
+      <div class="stat-item"><div class="stat-num">363K</div><div class="stat-label">内置词条</div></div>
+      <div class="stat-item"><div class="stat-num">8</div><div class="stat-label">LLM 提供商</div></div>
+      <div class="stat-item"><div class="stat-num">4</div><div class="stat-label">支持平台</div></div>
     </div>
 
-    <!-- 涓绘埅鍥?-->
+    <!-- IMAGE_PLACEHOLDER_1: 主界面截图 -->
     <div class="hero-screenshot">
       <div class="screenshot-frame">
-        <div class="screenshot-placeholder">
-          <!--
-            灏嗘埅鍥捐浆涓?base64 宓屽叆锛?
-            鍦?PowerShell 涓繍琛岋細
-            [Convert]::ToBase64String([IO.File]::ReadAllBytes("鎴浘.png")) | Set-Clipboard
-            鐒跺悗灏嗕笅闈㈢殑鍗犱綅鍐呭鏇挎崲涓猴細
-            <img src="data:image/png;base64,绮樿创Base64鍐呭" alt="涓荤晫闈?>
-          -->
-          <div class="img-tip">馃摳 涓荤晫闈㈡埅鍥?br>鐢?Base64 宓屽叆鍥剧墖锛?code>&lt;img src="data:image/png;base64,..." alt="涓荤晫闈?&gt;</code></div>
-        </div>
+        <div class="img-slot">主界面截图</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- 鈺愨晲鈺?Core Features 鈺愨晲鈺?-->
+<!-- Core Features -->
 <section id="features">
   <div class="container">
     <div class="section-header fade-in">
       <span class="section-tag">Core Features</span>
-      <h2>鍏ㄦ柟浣嶅痉璇涔犲姛鑳界煩闃?/h2>
-      <p>瑕嗙洊鍚€佽銆佽銆佸啓銆佽瘝姹囥€佽娉曞叚澶х淮搴︼紝鏋勫缓瀹屾暣瀛︿範闂幆</p>
+      <h2>全方位德语学习功能矩阵</h2>
+      <p>覆盖听、说、读、写、词汇、语法六大维度，构建完整学习闭环</p>
     </div>
-
     <div class="features-grid">
       <div class="feature-card fade-in" style="--card-accent: var(--emerald)">
-        <div class="feature-icon" style="background: rgba(16,185,129,0.1)">馃帶</div>
-        <h3>鏅鸿兘鍚啓绯荤粺</h3>
-        <p>鍩轰簬 Wagner-Fischer 缂栬緫璺濈绠楁硶鐨勯€愯瘝鏅鸿兘瀵规瘮锛岀豢鑹叉纭€侀粍鑹插皬閿欍€佺孩鑹查敊璇€傛敮鎸佸彉閫熸挱鏀?0.5x-2.0x銆佸尯闂村惊鐜€佷笓娉ㄦā寮忋€?/p>
+        <div class="feature-icon" style="background: rgba(16,185,129,0.1)">🎧</div>
+        <h3>智能听写系统</h3>
+        <p>基于 Wagner-Fischer 编辑距离算法的逐词智能对比，绿色正确、黄色小错、红色错误。支持变速播放 0.5x-2.0x、区间循环、专注模式。</p>
         <div class="tag-list">
-          <span class="tag">閫愯瘝瀵规瘮</span>
-          <span class="tag">鍙橀€熸挱鏀?/span>
-          <span class="tag">鍖洪棿寰幆</span>
-          <span class="tag">涓撴敞妯″紡</span>
+          <span class="tag">逐词对比</span><span class="tag">变速播放</span><span class="tag">区间循环</span><span class="tag">专注模式</span>
         </div>
       </div>
-
       <div class="feature-card fade-in" style="--card-accent: var(--accent-blue)">
-        <div class="feature-icon" style="background: rgba(59,130,246,0.1)">馃棧锔?/div>
-        <h3>鍙ｈ缁冧範 + AI 鏁欑粌</h3>
-        <p>褰曢煶鍚庤嚜鍔ㄨ闊宠浆鍐欙紙鏈湴 Whisper / 浜戠 API锛夛紝涓庡師鏂囬€愯瘝瀵规瘮璁＄畻鍑嗙‘鐜囥€侫I 鍙戦煶鏁欑粌鎻愪緵 IPA 娉ㄩ煶銆侀噸闊宠璋冦€佽繛璇绘寚瀵笺€?/p>
+        <div class="feature-icon" style="background: rgba(59,130,246,0.1)">🗣️</div>
+        <h3>口语练习 + AI 教练</h3>
+        <p>录音后自动语音转写（本地 Whisper / 云端 API），与原文逐词对比计算准确率。AI 发音教练提供 IPA 注音、重音语调、连读指导。</p>
         <div class="tag-list">
-          <span class="tag">褰曢煶杞啓</span>
-          <span class="tag">鍑嗙‘鐜囪瘎浼?/span>
-          <span class="tag">IPA 娉ㄩ煶</span>
-          <span class="tag">鍙戦煶鏁欑粌</span>
+          <span class="tag">录音转写</span><span class="tag">准确率评估</span><span class="tag">IPA 注音</span><span class="tag">发音教练</span>
         </div>
       </div>
-
       <div class="feature-card fade-in" style="--card-accent: var(--accent-purple)">
-        <div class="feature-icon" style="background: rgba(139,92,246,0.1)">馃摉</div>
-        <h3>娌夋蹈寮忛槄璇?/h3>
-        <p>鍏ㄦ枃杩炵画灞曠ず锛岀偣鍑讳换鎰忓崟璇嶅嵆鍒绘煡璇嶃€備笁绾ц瘝鍏革細鏈湴绠€鏄撹瘝搴?鈫?FreeDict 363K 璇嶆潯 鈫?鍦ㄧ嚎 API 鈫?AI 娣卞害瑙ｆ瀽銆?/p>
+        <div class="feature-icon" style="background: rgba(139,92,246,0.1)">📖</div>
+        <h3>沉浸式阅读</h3>
+        <p>全文连续展示，点击任意单词即刻查词。三级词典：本地简易词库 → FreeDict 363K 词条 → 在线 API → AI 深度解析。</p>
         <div class="tag-list">
-          <span class="tag">鐐瑰嚮鏌ヨ瘝</span>
-          <span class="tag">涓夌骇璇嶅吀</span>
-          <span class="tag">瀛椾綋缂╂斁</span>
-          <span class="tag">AI 瑙ｆ瀽</span>
+          <span class="tag">点击查词</span><span class="tag">三级词典</span><span class="tag">字体缩放</span><span class="tag">AI 解析</span>
         </div>
       </div>
-
       <div class="feature-card fade-in" style="--card-accent: var(--accent-amber)">
-        <div class="feature-icon" style="background: rgba(245,158,11,0.1)">馃帳</div>
-        <h3>鍗℃媺OK寮忚窡璇?/h3>
-        <p>瀹炴椂楂樹寒褰撳墠鎾斁鍙ュ瓙锛岃嚜鍔ㄦ粴鍔ㄨ拷韪€傞粯璁?0.7x 鎱㈤€熼€傚悎璺熻锛岀偣鍑讳换鎰忓彞瀛愯烦杞挱鏀俱€傛硾鍚ā寮忔敮鎸佺函鍚笉鐪嬫枃瀛椼€?/p>
+        <div class="feature-icon" style="background: rgba(245,158,11,0.1)">🎤</div>
+        <h3>卡拉OK式跟读</h3>
+        <p>实时高亮当前播放句子，自动滚动追踪。默认 0.7x 慢速适合跟读，点击任意句子跳转播放。泛听模式支持纯听不看文字。</p>
         <div class="tag-list">
-          <span class="tag">瀹炴椂楂樹寒</span>
-          <span class="tag">鑷姩婊氬姩</span>
-          <span class="tag">9绾у彉閫?/span>
-          <span class="tag">娉涘惉妯″紡</span>
+          <span class="tag">实时高亮</span><span class="tag">自动滚动</span><span class="tag">9级变速</span><span class="tag">泛听模式</span>
         </div>
       </div>
-
       <div class="feature-card fade-in" style="--card-accent: var(--accent-rose)">
-        <div class="feature-icon" style="background: rgba(244,63,94,0.1)">鉁嶏笍</div>
-        <h3>澶氭ā鎬佺粌涔?/h3>
-        <p>瀹屽舰濉┖鑷姩鎸栫┖ 路 鍙ュ瓙鎺掑簭鎷栨嫿閲嶇粍 路 AI 鍚姏鐞嗚В 5 棰橀€夋嫨 路 鍐欎綔鎵规敼 CEFR 璇勭骇銆? 绉嶇粌涔犳ā寮忓叏闈㈣鐩栥€?/p>
+        <div class="feature-icon" style="background: rgba(244,63,94,0.1)">✍️</div>
+        <h3>多模态练习</h3>
+        <p>完形填空自动挖空、句子排序拖拽重组、AI 听力理解 5 题选择、写作批改 CEFR 评级。8 种练习模式全面覆盖。</p>
         <div class="tag-list">
-          <span class="tag">瀹屽舰濉┖</span>
-          <span class="tag">鍙ュ瓙鎺掑簭</span>
-          <span class="tag">鍚姏鐞嗚В</span>
-          <span class="tag">鍐欎綔鎵规敼</span>
+          <span class="tag">完形填空</span><span class="tag">句子排序</span><span class="tag">听力理解</span><span class="tag">写作批改</span>
         </div>
       </div>
-
       <div class="feature-card fade-in" style="--card-accent: var(--emerald)">
-        <div class="feature-icon" style="background: rgba(16,185,129,0.1)">馃</div>
-        <h3>鑹惧娴╂柉澶嶄範</h3>
-        <p>閿欒瘝鑷姩鍏ュ簱锛岃壘瀹炬旦鏂棿闅?(1h鈫?h鈫?d鈫?d鈫?d鈫?d鈫?5d鈫?0d) 绉戝澶嶄範銆傞棯鍗＄炕杞姩鐢伙紝鍙ユ捣鎷鹃仐闅忔満鎶界粌銆?/p>
+        <div class="feature-icon" style="background: rgba(16,185,129,0.1)">🧠</div>
+        <h3>艾宾浩斯复习</h3>
+        <p>错词自动入库，艾宾浩斯间隔 (1h→8h→1d→2d→4d→7d→15d→30d) 科学复习。闪卡翻转动画，句海拾遗随机抽练。</p>
         <div class="tag-list">
-          <span class="tag">闂撮殧澶嶄範</span>
-          <span class="tag">闂崱鍔ㄧ敾</span>
-          <span class="tag">閿欒瘝鏈?/span>
-          <span class="tag">Anki 瀵煎嚭</span>
+          <span class="tag">间隔复习</span><span class="tag">闪卡动画</span><span class="tag">错词本</span><span class="tag">Anki 导出</span>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- 鈺愨晲鈺?Learning Workflow 鈺愨晲鈺?-->
+<!-- Learning Workflow -->
 <section id="workflow" style="background: rgba(255,255,255,0.01);">
   <div class="container">
     <div class="section-header fade-in">
       <span class="section-tag">Methodology</span>
-      <h2>銆屽皻闆娉曘€嶅涔犲洓姝ユ洸</h2>
-      <p>缁忓疄璺甸獙璇佺殑楂樻晥寰疯瀛︿範鏂规硶璁猴紝姣忎竴姝ラ兘鏈?AI 娣卞害杈呭姪</p>
+      <h2>「尚雯婕法」学习四步曲</h2>
+      <p>经实践验证的高效德语学习方法论，每一步都有 AI 深度辅助</p>
     </div>
-
     <div class="workflow-steps fade-in">
       <div class="workflow-step">
         <div class="step-number">1</div>
-        <h4>鍚啓</h4>
-        <p>閫愬彞鍚啓锛屾櫤鑳藉姣斻€侫I 绾犻敊鍏ュ簱锛岀簿鍑嗗畾浣嶈杽寮辩偣銆?/p>
+        <h4>听写</h4>
+        <p>逐句听写，智能对比。AI 纠错入库，精准定位薄弱点。</p>
       </div>
       <div class="workflow-step">
         <div class="step-number">2</div>
-        <h4>绮炬瀽</h4>
-        <p>AI 璇硶鍒嗘瀽銆佹煡璇嶉噴涔夈€佺炕璇戝鐓с€傛繁鍏ョ悊瑙ｆ瘡涓粏鑺傘€?/p>
+        <h4>精析</h4>
+        <p>AI 语法分析、查词释义、翻译对照。深入理解每个细节。</p>
       </div>
       <div class="workflow-step">
         <div class="step-number">3</div>
-        <h4>璺熻</h4>
-        <p>鍗℃媺OK寮忚窡璇伙紝鍙橀€熻缁冦€侫I 鍙戦煶鏁欑粌瀹炴椂鎸囧銆?/p>
+        <h4>跟读</h4>
+        <p>卡拉OK式跟读，变速训练。AI 发音教练实时指导。</p>
       </div>
       <div class="workflow-step">
         <div class="step-number">4</div>
-        <h4>鑳岃</h4>
-        <p>闂撮殧澶嶄範锛岄棯鍗″己鍖栥€傚畬褰㈠～绌恒€佸彞瀛愭帓搴忓珐鍥鸿蹇嗐€?/p>
+        <h4>背诵</h4>
+        <p>间隔复习，闪卡强化。完形填空、句子排序巩固记忆。</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- 鈺愨晲鈺?Content Import 鈺愨晲鈺?-->
+<!-- Content Import -->
 <section>
   <div class="container">
     <div class="section-header fade-in">
       <span class="section-tag">Import</span>
-      <h2>澶氬厓鍐呭瀵煎叆绯荤粺</h2>
-      <p>YouTube 路 鎾 RSS 路 鏈湴鏂囦欢 路 瀛楀箷瑙ｆ瀽 鈥斺€?浣犵殑寰疯绱犳潗锛岃交鏉惧鍏?/p>
+      <h2>多元内容导入系统</h2>
+      <p>YouTube、播客 RSS、本地文件、字幕解析 — 你的德语素材，轻松导入</p>
     </div>
-
     <div class="features-grid">
       <div class="feature-card fade-in" style="--card-accent: #ff0000">
-        <div class="feature-icon" style="background: rgba(255,0,0,0.1)">鈻讹笍</div>
-        <h3>YouTube 瑙嗛瀵煎叆</h3>
-        <p>鑷姩涓嬭浇 yt-dlp锛屾敮鎸佷换鎰?YouTube 瑙嗛/鎾斁鍒楄〃銆傛櫤鑳借В鏋?VTT 瀛楀箷锛堝惈閫愯瘝鏃堕棿鎴筹級锛屼竴閿垱寤哄涔犻」鐩€?/p>
+        <div class="feature-icon" style="background: rgba(255,0,0,0.1)">▶️</div>
+        <h3>YouTube 视频导入</h3>
+        <p>自动下载 yt-dlp，支持任意 YouTube 视频/播放列表。智能解析 VTT 字幕（含逐词时间戳），一键创建学习项目。</p>
       </div>
-
       <div class="feature-card fade-in" style="--card-accent: var(--accent-purple)">
-        <div class="feature-icon" style="background: rgba(139,92,246,0.1)">馃帣锔?/div>
-        <h3>鎾 RSS 瀵煎叆</h3>
-        <p>棰勮 Slow German銆丏eutsche Welle 绛変紭璐ㄦ挱瀹€傛敮鎸佷换鎰?RSS 婧愶紝涓嬭浇闊抽鍚庢湰鍦?浜戠 Whisper 鑷姩杞啓銆侫I 鏅鸿兘鍒嗗彞浼樺寲銆?/p>
+        <div class="feature-icon" style="background: rgba(139,92,246,0.1)">🎙️</div>
+        <h3>播客 RSS 导入</h3>
+        <p>预设 Slow German、Deutsche Welle 等优质播客。支持任意 RSS 源，下载音频后本地/云端 Whisper 自动转写。AI 智能分句优化。</p>
       </div>
-
       <div class="feature-card fade-in" style="--card-accent: var(--accent-blue)">
-        <div class="feature-icon" style="background: rgba(59,130,246,0.1)">馃搧</div>
-        <h3>鏈湴鏂囦欢 & 瀛楀箷</h3>
-        <p>瀵煎叆 MP3/M4A/WAV 闊抽 + TXT/SRT/VTT 鏂囨湰銆俈TT 鏅鸿兘瑙ｆ瀽 YouTube 鑷姩瀛楀箷 &lt;c&gt; 閫愯瘝鏃堕棿鎴筹紝鑷姩鎸夋爣鐐规媶鍙ャ€?/p>
+        <div class="feature-icon" style="background: rgba(59,130,246,0.1)">📁</div>
+        <h3>本地文件 &amp; 字幕</h3>
+        <p>导入 MP3/M4A/WAV 音频 + TXT/SRT/VTT 文本。VTT 智能解析 YouTube 自动字幕逐词时间戳，自动按标点拆句。</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- 鈺愨晲鈺?Screenshots 鈺愨晲鈺?-->
+<!-- Screenshots -->
 <section id="screenshots" style="background: rgba(255,255,255,0.01);">
   <div class="container">
     <div class="section-header fade-in">
       <span class="section-tag">Interface</span>
-      <h2>绮惧績璁捐鐨勭晫闈?/h2>
-      <p>Material 3 璁捐璇█锛屾瘺鐜荤拑鍗＄墖锛屽搷搴斿紡甯冨眬锛屾繁鑹?娴呰壊涓婚</p>
+      <h2>精心设计的界面</h2>
+      <p>Material 3 设计语言，毛玻璃卡片，响应式布局，深色/浅色主题</p>
     </div>
-
     <div class="gallery-grid fade-in">
+      <!-- IMAGE_PLACEHOLDER_2: 总览仪表盘 -->
       <div class="gallery-item">
-        <div class="gallery-placeholder">
-          <!-- 馃憞 鍦ㄦ绮樿创鎴浘 -->
-          馃摳 鎬昏浠〃鐩樻埅鍥?
-        </div>
-        <div class="gallery-caption">馃搳 鎬昏浠〃鐩?鈥?瀛︿範鏁版嵁涓€瑙堬紝30 澶╂椿璺冨害鐑姏鍥?/div>
+        <div class="gallery-slot">总览仪表盘截图</div>
+        <div class="gallery-caption">📊 总览仪表盘 — 学习数据一览，30 天活跃度热力图</div>
       </div>
-
+      <!-- IMAGE_PLACEHOLDER_3: 听写练习 -->
       <div class="gallery-item">
-        <div class="gallery-placeholder">
-          <!-- 馃憞 鍦ㄦ绮樿创鎴浘 -->
-          馃摳 鍚啓缁冧範鎴浘
-        </div>
-        <div class="gallery-caption">馃帶 鍚啓缁冧範 鈥?閫愯瘝瀵规瘮锛岀壒娈婂瓧绗﹀揩鎹疯緭鍏?/div>
+        <div class="gallery-slot">听写练习截图</div>
+        <div class="gallery-caption">🎧 听写练习 — 逐词对比，特殊字符快捷输入</div>
       </div>
-
+      <!-- IMAGE_PLACEHOLDER_4: 时间轴标注 -->
       <div class="gallery-item">
-        <div class="gallery-placeholder">
-          <!-- 馃憞 鍦ㄦ绮樿创鎴浘 -->
-          馃摳 鏃堕棿杞存爣娉ㄦ埅鍥?
-        </div>
-        <div class="gallery-caption">馃幍 鏃堕棿杞存爣娉?鈥?闊抽娉㈠舰鍙鍖栵紝绮剧‘鏍囪鍙ユ</div>
+        <div class="gallery-slot">时间轴标注截图</div>
+        <div class="gallery-caption">🎵 时间轴标注 — 音频波形可视化，精确标记句段</div>
       </div>
-
+      <!-- IMAGE_PLACEHOLDER_5: 跟读模式 -->
       <div class="gallery-item">
-        <div class="gallery-placeholder">
-          <!-- 馃憞 鍦ㄦ绮樿创鎴浘 -->
-          馃摳 璺熻妯″紡鎴浘
-        </div>
-        <div class="gallery-caption">馃棧锔?鍗℃媺OK璺熻 鈥?瀹炴椂楂樹寒杩借釜锛屽彉閫熻缁?/div>
+        <div class="gallery-slot">跟读模式截图</div>
+        <div class="gallery-caption">🗣️ 卡拉OK跟读 — 实时高亮追踪，变速训练</div>
       </div>
-
+      <!-- IMAGE_PLACEHOLDER_6: AI 助手 -->
       <div class="gallery-item">
-        <div class="gallery-placeholder">
-          <!-- 馃憞 鍦ㄦ绮樿创鎴浘 -->
-          馃摳 AI 鍔╂墜鎴浘
-        </div>
-        <div class="gallery-caption">馃 AI 寰疯鍔╂墜 鈥?6 绉嶅垎鏋愭ā寮忥紝娣卞害瀛︿範杈呭姪</div>
+        <div class="gallery-slot">AI 助手截图</div>
+        <div class="gallery-caption">🤖 AI 德语助手 — 6 种分析模式，深度学习辅助</div>
       </div>
-
+      <!-- IMAGE_PLACEHOLDER_7: 口语练习 -->
       <div class="gallery-item">
-        <div class="gallery-placeholder">
-          <!-- 馃憞 鍦ㄦ绮樿创鎴浘 -->
-          馃摳 鍙ｈ缁冧範鎴浘
-        </div>
-        <div class="gallery-caption">馃帳 鍙ｈ缁冧範 鈥?褰曢煶杞啓瀵规瘮锛孉I 鍙戦煶鏁欑粌</div>
+        <div class="gallery-slot">口语练习截图</div>
+        <div class="gallery-caption">🎤 口语练习 — 录音转写对比，AI 发音教练</div>
       </div>
-
+      <!-- IMAGE_PLACEHOLDER_8: 资源中心 -->
       <div class="gallery-item">
-        <div class="gallery-placeholder">
-          <!-- 馃憞 鍦ㄦ绮樿创鎴浘 -->
-          馃摳 璧勬簮涓績鎴浘
-        </div>
-        <div class="gallery-caption">馃寪 璧勬簮涓績 鈥?30+ 绮鹃€夊痉璇涔犺祫婧愶紝涓€閿鍏?/div>
+        <div class="gallery-slot">资源中心截图</div>
+        <div class="gallery-caption">🌐 资源中心 — 30+ 精选德语学习资源，一键导入</div>
       </div>
-
+      <!-- IMAGE_PLACEHOLDER_9: 错词本 -->
       <div class="gallery-item">
-        <div class="gallery-placeholder">
-          <!-- 馃憞 鍦ㄦ绮樿创鎴浘 -->
-          馃摳 閿欒瘝鏈埅鍥?
-        </div>
-        <div class="gallery-caption">馃摑 閿欒瘝鏈?鈥?鑹惧娴╂柉澶嶄範锛屾悳绱㈡帓搴忥紝Anki 瀵煎嚭</div>
+        <div class="gallery-slot">错词本截图</div>
+        <div class="gallery-caption">📝 错词本 — 艾宾浩斯复习，搜索排序，Anki 导出</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- 鈺愨晲鈺?AI Capabilities 鈺愨晲鈺?-->
+<!-- AI Capabilities -->
 <section id="ai">
   <div class="container">
     <div class="section-header fade-in">
       <span class="section-tag">AI Powered</span>
-      <h2>12+ 椤?AI 娣卞害鑳藉姏</h2>
-      <p>杩炴帴 8 澶?LLM 鎻愪緵鍟嗭紝鏈湴 Whisper 璇煶璇嗗埆锛岃 AI 鎴愪负浣犵殑涓撳睘寰疯鏁欏笀</p>
+      <h2>12+ 项 AI 深度能力</h2>
+      <p>连接 8 大 LLM 提供商，本地 Whisper 语音识别，让 AI 成为你的专属德语教师</p>
     </div>
-
     <div class="ai-grid fade-in">
-      <div class="ai-card">
-        <div class="emoji">馃摑</div>
-        <h4>璇硶鍒嗘瀽</h4>
-        <p>鍙ュ瀷缁撴瀯銆佸姩璇嶅垎鏋愩€佹垚鍒嗘爣娉?/p>
-      </div>
-      <div class="ai-card">
-        <div class="emoji">馃摉</div>
-        <h4>鏌ヨ瘝閲婁箟</h4>
-        <p>璇嶆€у彉褰€佹惌閰嶄緥鍙ャ€丄I 娣卞害瑙ｆ瀽</p>
-      </div>
-      <div class="ai-card">
-        <div class="emoji">馃攧</div>
-        <h4>鍙岃缈昏瘧</h4>
-        <p>鐩磋瘧+鎰忚瘧銆佹枃鍖栨敞閲娿€佸彞瀵归綈</p>
-      </div>
-      <div class="ai-card">
-        <div class="emoji">馃帳</div>
-        <h4>鍙戦煶鎸囧</h4>
-        <p>IPA 娉ㄩ煶銆侀噸闊宠璋冦€佷腑鍥戒汉闅剧偣</p>
-      </div>
-      <div class="ai-card">
-        <div class="emoji">馃挰</div>
-        <h4>寰疯瀵硅瘽</h4>
-        <p>8 绉嶅満鏅鑹叉壆婕斻€佸疄鏃剁籂閿?/p>
-      </div>
-      <div class="ai-card">
-        <div class="emoji">馃搮</div>
-        <h4>姣忔棩寰疯</h4>
-        <p>鍗曡瘝路鍙ュ瓙路璇硶路缁冧範路鏂囧寲 浜旀澘鍧?/p>
-      </div>
-      <div class="ai-card">
-        <div class="emoji">馃搳</div>
-        <h4>闅惧害鍒嗘瀽</h4>
-        <p>CEFR 璇勪及銆侀珮绾ц瘝姹囨爣娉?/p>
-      </div>
-      <div class="ai-card">
-        <div class="emoji">鉁忥笍</div>
-        <h4>鍐欎綔鎵规敼</h4>
-        <p>CEFR 璇勭骇銆侀€愭潯淇銆佽寖鏂囧缓璁?/p>
-      </div>
-      <div class="ai-card">
-        <div class="emoji">馃</div>
-        <h4>瀛︿範瑙勫垝</h4>
-        <p>鏁版嵁椹卞姩鐨勪釜鎬у寲瀛︿範璁″垝</p>
-      </div>
-      <div class="ai-card">
-        <div class="emoji">馃幆</div>
-        <h4>AI 閫犲彞</h4>
-        <p>鍗曡瘝閫犲彞路璇硶缁冧範路涓婚浣滄枃</p>
-      </div>
-      <div class="ai-card">
-        <div class="emoji">馃帶</div>
-        <h4>鍚姏鐞嗚В</h4>
-        <p>AI 鑷姩鐢熸垚 5 閬撻€夋嫨棰?/p>
-      </div>
-      <div class="ai-card">
-        <div class="emoji">馃攰</div>
-        <h4>Whisper 杞啓</h4>
-        <p>鏈湴 whisper.cpp + 浜戠 API</p>
-      </div>
+      <div class="ai-card"><div class="emoji">📝</div><h4>语法分析</h4><p>句型结构、动词分析、成分标注</p></div>
+      <div class="ai-card"><div class="emoji">📖</div><h4>查词释义</h4><p>词性变形、搭配例句、AI 深度解析</p></div>
+      <div class="ai-card"><div class="emoji">🔄</div><h4>双语翻译</h4><p>直译+意译、文化注释、句对齐</p></div>
+      <div class="ai-card"><div class="emoji">🎤</div><h4>发音指导</h4><p>IPA 注音、重音语调、中国人难点</p></div>
+      <div class="ai-card"><div class="emoji">💬</div><h4>德语对话</h4><p>8 种场景角色扮演、实时纠错</p></div>
+      <div class="ai-card"><div class="emoji">📅</div><h4>每日德语</h4><p>单词、句子、语法、练习、文化五板块</p></div>
+      <div class="ai-card"><div class="emoji">📊</div><h4>难度分析</h4><p>CEFR 评估、高级词汇标注</p></div>
+      <div class="ai-card"><div class="emoji">✏️</div><h4>写作批改</h4><p>CEFR 评级、逐条修正、范文建议</p></div>
+      <div class="ai-card"><div class="emoji">🧠</div><h4>学习规划</h4><p>数据驱动的个性化学习计划</p></div>
+      <div class="ai-card"><div class="emoji">🎯</div><h4>AI 造句</h4><p>单词造句、语法练习、主题作文</p></div>
+      <div class="ai-card"><div class="emoji">🎧</div><h4>听力理解</h4><p>AI 自动生成 5 道选择题</p></div>
+      <div class="ai-card"><div class="emoji">🔊</div><h4>Whisper 转写</h4><p>本地 whisper.cpp + 云端 API</p></div>
     </div>
 
-    <!-- AI Providers -->
     <div class="section-header fade-in" style="margin-top: 80px; margin-bottom: 32px;">
-      <h2 style="font-size: 1.8rem;">鏀寔 8 澶?AI 鎻愪緵鍟?/h2>
-      <p>鐏垫椿鍒囨崲锛屾瘡涓彁渚涘晢鐙珛閰嶇疆 API Key 鍜屾ā鍨?/p>
+      <h2 style="font-size: 1.8rem;">支持 8 大 AI 提供商</h2>
+      <p>灵活切换，每个提供商独立配置 API Key 和模型</p>
     </div>
-
     <div class="provider-grid fade-in">
-      <div class="provider-card">
-        <div class="name">DeepSeek</div>
-        <div class="model">deepseek-chat</div>
-      </div>
-      <div class="provider-card">
-        <div class="name">ChatGPT</div>
-        <div class="model">gpt-4o</div>
-      </div>
-      <div class="provider-card">
-        <div class="name">Claude</div>
-        <div class="model">claude-sonnet-4</div>
-      </div>
-      <div class="provider-card">
-        <div class="name">MiniMax</div>
-        <div class="model">MiniMax-M2.7</div>
-      </div>
-      <div class="provider-card">
-        <div class="name">GLM 鏅鸿氨</div>
-        <div class="model">glm-4-flash</div>
-      </div>
-      <div class="provider-card">
-        <div class="name">Qwen 閫氫箟</div>
-        <div class="model">qwen-plus</div>
-      </div>
-      <div class="provider-card">
-        <div class="name">Doubao 璞嗗寘</div>
-        <div class="model">doubao-1.5-pro</div>
-      </div>
-      <div class="provider-card">
-        <div class="name">馃敡 鑷畾涔?/div>
-        <div class="model">OpenAI 鍏煎 API</div>
-      </div>
+      <div class="provider-card"><div class="name">DeepSeek</div><div class="model">deepseek-chat</div></div>
+      <div class="provider-card"><div class="name">ChatGPT</div><div class="model">gpt-4o</div></div>
+      <div class="provider-card"><div class="name">Claude</div><div class="model">claude-sonnet-4</div></div>
+      <div class="provider-card"><div class="name">MiniMax</div><div class="model">MiniMax-M2.7</div></div>
+      <div class="provider-card"><div class="name">GLM 智谱</div><div class="model">glm-4-flash</div></div>
+      <div class="provider-card"><div class="name">Qwen 通义</div><div class="model">qwen-plus</div></div>
+      <div class="provider-card"><div class="name">Doubao 豆包</div><div class="model">doubao-1.5-pro</div></div>
+      <div class="provider-card"><div class="name">自定义</div><div class="model">OpenAI 兼容 API</div></div>
     </div>
   </div>
 </section>
 
-<!-- 鈺愨晲鈺?Tech Stack 鈺愨晲鈺?-->
+<!-- Tech Stack -->
 <section id="tech" style="background: rgba(255,255,255,0.01);">
   <div class="container">
     <div class="section-header fade-in">
       <span class="section-tag">Tech Stack</span>
-      <h2>鎶€鏈灦鏋?/h2>
-      <p>鐜颁唬鍖栨妧鏈爤锛岄珮鎬ц兘鏈湴浼樺厛鏋舵瀯</p>
+      <h2>技术架构</h2>
+      <p>现代化技术栈，高性能本地优先架构</p>
     </div>
-
     <div class="tech-grid fade-in">
       <div class="tech-pill"><span class="tech-dot" style="background: #027DFD;"></span> Flutter 3.29</div>
       <div class="tech-pill"><span class="tech-dot" style="background: #0175C2;"></span> Dart 3.7</div>
@@ -1064,64 +593,51 @@
       <div class="tech-pill"><span class="tech-dot" style="background: var(--accent-rose);"></span> whisper.cpp</div>
       <div class="tech-pill"><span class="tech-dot" style="background: #94a3b8;"></span> FreeDict 363K</div>
     </div>
-
     <div class="features-grid" style="margin-top: 48px;">
       <div class="feature-card fade-in">
-        <h3>馃枼锔?鍝嶅簲寮忓竷灞€</h3>
-        <p>绐勫睆搴曢儴瀵艰埅 鈫?渚ц竟鏍?鈫?灞曞紑瀵艰埅鏍忋€備笁鏂偣鑷€傚簲锛屾闈㈠拰绉诲姩绔潎鏈夋渶浣充綋楠屻€?/p>
+        <h3>🖥️ 响应式布局</h3>
+        <p>窄屏底部导航 → 侧边栏 → 展开导航栏。三断点自适应，桌面和移动端均有最佳体验。</p>
       </div>
       <div class="feature-card fade-in">
-        <h3>馃捑 鏈湴浼樺厛</h3>
-        <p>鎵€鏈夋暟鎹瓨鍌ㄥ湪鏈湴 SQLite锛屾棤闇€娉ㄥ唽璐﹀彿銆傜绾垮彲鐢紝Whisper 璇煶璇嗗埆涔熸敮鎸佹湰鍦拌繍琛屻€?/p>
+        <h3>💾 本地优先</h3>
+        <p>所有数据存储在本地 SQLite，无需注册账号。离线可用，Whisper 语音识别也支持本地运行。</p>
       </div>
       <div class="feature-card fade-in">
-        <h3>馃實 璺ㄥ钩鍙?/h3>
-        <p>Windows锛堜富锛壜?macOS 路 Android 路 iOS 鍏ㄥ钩鍙版敮鎸併€備竴濂椾唬鐮侊紝缁熶竴浣撻獙銆?/p>
+        <h3>🌍 跨平台</h3>
+        <p>Windows（主）· macOS · Android · iOS 全平台支持。一套代码，统一体验。</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- 鈺愨晲鈺?Download CTA 鈺愨晲鈺?-->
+<!-- Download CTA -->
 <section id="download" class="cta-section">
   <div class="container" style="position: relative; z-index: 1;">
-    <h2>寮€濮嬩綘鐨勫痉璇涔犱箣鏃?/h2>
-    <p>鍏嶈垂涓嬭浇锛屾湰鍦拌繍琛岋紝鏃犻渶娉ㄥ唽銆傛墍鏈夋暟鎹繚瀛樺湪浣犵殑璁惧涓娿€?/p>
+    <h2>开始你的德语学习之旅</h2>
+    <p>免费下载，本地运行，无需注册。所有数据保存在你的设备上。</p>
     <div class="hero-actions">
-      <a href="#" class="btn btn-primary" style="font-size: 1.1rem; padding: 16px 40px;">
-        猬囷笍 涓嬭浇 Windows 鐗?(19 MB)
-      </a>
-      <a href="https://github.com/fengniudashen/Full_german" class="btn btn-outline" target="_blank">
-        馃摝 鏌ョ湅婧愪唬鐮?
-      </a>
+      <a href="#" class="btn btn-primary" style="font-size: 1.1rem; padding: 16px 40px;">下载 Windows 版 (19 MB)</a>
+      <a href="https://github.com/fengniudashen/Full_german" class="btn btn-outline" target="_blank">查看源代码</a>
     </div>
   </div>
 </section>
 
-<!-- 鈺愨晲鈺?Footer 鈺愨晲鈺?-->
+<!-- Footer -->
 <footer>
   <div class="container">
-    <p>DeutschFlow 鈥?鐢?AI 閲嶆柊瀹氫箟寰疯瀛︿範 路 浣跨敤 Flutter 鏋勫缓</p>
+    <p>DeutschFlow — 用 AI 重新定义德语学习 · 使用 Flutter 构建</p>
     <p style="margin-top: 8px;">
       <a href="https://github.com/fengniudashen/Full_german" target="_blank">GitHub</a>
-      &nbsp;路&nbsp; MIT License &nbsp;路&nbsp; Made with 鉂わ笍
+      &nbsp;·&nbsp; MIT License &nbsp;·&nbsp; Made with ❤️
     </p>
   </div>
 </footer>
 
-<!-- 鈺愨晲鈺?Scroll Animation 鈺愨晲鈺?-->
 <script>
   const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-      }
-    });
+    entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
   }, { threshold: 0.1 });
-
   document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
-
-  // Smooth scroll for nav links
   document.querySelectorAll('a[href^="#"]').forEach(a => {
     a.addEventListener('click', e => {
       e.preventDefault();
@@ -1133,4 +649,3 @@
 
 </body>
 </html>
-
