@@ -68,12 +68,9 @@ class _HomeShellState extends State<HomeShell> {
                     showFlashcard: _selectedIndex == 3,
                   ),
                   Expanded(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: KeyedSubtree(
-                        key: ValueKey(_selectedIndex),
-                        child: pages[_selectedIndex],
-                      ),
+                    child: IndexedStack(
+                      index: _selectedIndex,
+                      children: pages,
                     ),
                   ),
                 ],
@@ -115,12 +112,9 @@ class _HomeShellState extends State<HomeShell> {
           ),
         ],
       ),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: KeyedSubtree(
-          key: ValueKey(_selectedIndex),
-          child: pages[_selectedIndex],
-        ),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: pages,
       ),
       floatingActionButton: _selectedIndex == 1
           ? FloatingActionButton.extended(

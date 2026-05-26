@@ -24,38 +24,44 @@ class GlassCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final isInteractive = onTap != null || onLongPress != null;
+
+    final container = Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        gradient: gradient ??
+            LinearGradient(
+              colors: isDark
+                  ? [
+                      scheme.surfaceContainerLow.withValues(alpha: 0.8),
+                      scheme.surfaceContainer.withValues(alpha: 0.5),
+                    ]
+                  : [
+                      Colors.white.withValues(alpha: 0.9),
+                      scheme.surfaceContainerLow.withValues(alpha: 0.7),
+                    ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+        borderRadius: AppTheme.borderLg,
+        border: Border.all(
+          color: borderColor ??
+              scheme.outlineVariant.withValues(alpha: isDark ? 0.3 : 0.6),
+        ),
+        boxShadow: AppTheme.shadowSm(Theme.of(context).brightness),
+      ),
+      child: child,
+    );
+
+    if (!isInteractive) return container;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         onLongPress: onLongPress,
         borderRadius: AppTheme.borderLg,
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            gradient: gradient ??
-                LinearGradient(
-                  colors: isDark
-                      ? [
-                          scheme.surfaceContainerLow.withValues(alpha: 0.8),
-                          scheme.surfaceContainer.withValues(alpha: 0.5),
-                        ]
-                      : [
-                          Colors.white.withValues(alpha: 0.9),
-                          scheme.surfaceContainerLow.withValues(alpha: 0.7),
-                        ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-            borderRadius: AppTheme.borderLg,
-            border: Border.all(
-              color: borderColor ??
-                  scheme.outlineVariant.withValues(alpha: isDark ? 0.3 : 0.6),
-            ),
-            boxShadow: AppTheme.shadowSm(Theme.of(context).brightness),
-          ),
-          child: child,
-        ),
+        child: container,
       ),
     );
   }

@@ -61,7 +61,7 @@ class ProjectsPage extends StatelessWidget {
                         crossAxisCount: crossAxisCount,
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
-                        childAspectRatio: crossAxisCount == 1 ? 2.8 : 1.6,
+                        mainAxisExtent: crossAxisCount == 1 ? 140 : 220,
                       ),
                       itemCount: appState.projects.length,
                       itemBuilder: (context, index) {

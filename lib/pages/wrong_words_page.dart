@@ -22,11 +22,36 @@ class _WrongWordsPageState extends State<WrongWordsPage> {
   int? _filterProjectId;
   bool? _filterMastered;
   bool _exporting = false;
+  String _searchQuery = '';
+  _SortMode _sortMode = _SortMode.recent;
 
   @override
   Widget build(BuildContext context) {
     return Consumer<AppState>(
       builder: (context, appState, _) {
+        // Apply search filter
+        var filtered = appState.wrongWords.where((w) {
+          if (_searchQuery.isEmpty) return true;
+          final q = _searchQuery.toLowerCase();
+          return w.wrongForm.toLowerCase().contains(q) ||
+              w.correctForm.toLowerCase().contains(q) ||
+              w.sentenceText.toLowerCase().contains(q);
+        }).toList();
+
+        // Apply sort
+        switch (_sortMode) {
+          case _SortMode.recent:
+            break;
+          case _SortMode.alpha:
+            filtered.sort((a, b) =>
+                a.correctForm.toLowerCase().compareTo(b.correctForm.toLowerCase()));
+            break;
+          case _SortMode.frequency:
+            filtered.sort((a, b) =>
+                b.reviewCount.compareTo(a.reviewCount));
+            break;
+        }
+
         return RefreshIndicator(
           onRefresh: () => appState.loadWrongWords(
             projectId: _filterProjectId,
@@ -40,7 +65,7 @@ class _WrongWordsPageState extends State<WrongWordsPage> {
                   child: _buildToolbar(context, appState),
                 ),
               ),
-              if (appState.wrongWords.isEmpty)
+              if (filtered.isEmpty)
                 const SliverFillRemaining(
                   hasScrollBody: false,
                   child: EmptyState(
@@ -57,10 +82,10 @@ class _WrongWordsPageState extends State<WrongWordsPage> {
                       (context, index) {
                         if (index.isOdd) return const SizedBox(height: 8);
                         return _WrongWordTile(
-                          word: appState.wrongWords[index ~/ 2],
+                          word: filtered[index ~/ 2],
                         );
                       },
-                      childCount: appState.wrongWords.length * 2 - 1,
+                      childCount: filtered.length * 2 - 1,
                     ),
                   ),
                 ),
@@ -80,9 +105,21 @@ class _WrongWordsPageState extends State<WrongWordsPage> {
         runSpacing: 12,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
+          // Search field
+          SizedBox(
+            width: 200,
+            child: TextField(
+              decoration: const InputDecoration(
+                hintText: '搜索错词…',
+                prefixIcon: Icon(Icons.search, size: 18),
+                isDense: true,
+              ),
+              onChanged: (v) => setState(() => _searchQuery = v),
+            ),
+          ),
           // Project filter
           SizedBox(
-            width: 220,
+            width: 200,
             child: DropdownButtonFormField<int?>(
               value: _filterProjectId,
               isExpanded: true,
@@ -128,6 +165,25 @@ class _WrongWordsPageState extends State<WrongWordsPage> {
               appState.loadWrongWords(
                   projectId: _filterProjectId,
                   mastered: _filterMastered);
+            },
+          ),
+
+          // Sort
+          DropdownButton<_SortMode>(
+            value: _sortMode,
+            isDense: true,
+            underline: const SizedBox.shrink(),
+            icon: const Icon(Icons.sort, size: 18),
+            items: const [
+              DropdownMenuItem(
+                value: _SortMode.recent, child: Text('最近')),
+              DropdownMenuItem(
+                value: _SortMode.alpha, child: Text('A→Z')),
+              DropdownMenuItem(
+                value: _SortMode.frequency, child: Text('频率')),
+            ],
+            onChanged: (v) {
+              if (v != null) setState(() => _sortMode = v);
             },
           ),
 
@@ -354,3 +410,5 @@ class _WrongWordTile extends StatelessWidget {
     );
   }
 }
+
+enum _SortMode { recent, alpha, frequency }

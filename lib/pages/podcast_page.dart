@@ -31,6 +31,7 @@ class _PodcastPageState extends State<PodcastPage> {
 
   bool _loading = false;
   bool _downloading = false;
+  double _downloadProgress = 0;
   bool _transcribing = false;
   double _transcribeProgress = 0;
   String? _error;
@@ -157,6 +158,7 @@ class _PodcastPageState extends State<PodcastPage> {
   Future<void> _downloadEpisode(_Episode ep) async {
     setState(() {
       _downloading = true;
+      _downloadProgress = 0;
       _error = null;
     });
 
@@ -169,12 +171,30 @@ class _PodcastPageState extends State<PodcastPage> {
           .replaceAll(RegExp(r'\s+'), '_');
       final filePath = p.join(dir.path, 'podcast_$safeName$ext');
 
-      final response = await http.get(Uri.parse(ep.audioUrl));
-      if (!mounted) return;
-      if (response.statusCode != 200) {
-        throw Exception('下载失败: HTTP ${response.statusCode}');
+      // Streaming download with progress
+      final client = http.Client();
+      try {
+        final request = http.Request('GET', Uri.parse(ep.audioUrl));
+        final response = await client.send(request);
+        if (response.statusCode != 200) {
+          throw Exception('下载失败: HTTP ${response.statusCode}');
+        }
+
+        final totalBytes = response.contentLength ?? 0;
+        int receivedBytes = 0;
+        final sink = File(filePath).openWrite();
+
+        await for (final chunk in response.stream) {
+          sink.add(chunk);
+          receivedBytes += chunk.length;
+          if (totalBytes > 0 && mounted) {
+            setState(() => _downloadProgress = receivedBytes / totalBytes);
+          }
+        }
+        await sink.close();
+      } finally {
+        client.close();
       }
-      await File(filePath).writeAsBytes(response.bodyBytes);
 
       if (!mounted) return;
       setState(() {
@@ -182,6 +202,7 @@ class _PodcastPageState extends State<PodcastPage> {
         _downloadedAudioPath = filePath;
         _nameCtrl.text = ep.title;
         _downloading = false;
+        _downloadProgress = 1;
       });
     } catch (e) {
       if (!mounted) return;
@@ -497,10 +518,19 @@ class _PodcastPageState extends State<PodcastPage> {
                             ),
                           ),
                           if (_downloading && _selected == ep)
-                            const SizedBox.square(
+                            SizedBox.square(
                               dimension: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                value: _downloadProgress > 0
+                                    ? _downloadProgress
+                                    : null,
+                              ),
+                            )
+                          else if (!isSelected)
+                            Icon(Icons.download,
+                                size: 20,
+                                color: theme.colorScheme.onSurfaceVariant),
                         ],
                       ),
                     ),
