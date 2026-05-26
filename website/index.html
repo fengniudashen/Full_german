@@ -297,6 +297,37 @@
     /* Animations */
     .fade-in { opacity: 0; transform: translateY(30px); transition: opacity 0.6s ease, transform 0.6s ease; }
     .fade-in.visible { opacity: 1; transform: translateY(0); }
+
+    /* Why Section */
+    .why-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .why-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 32px; transition: all 0.3s; position: relative; overflow: hidden;
+    }
+    .why-card:hover { background: var(--bg-card-hover); transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
+    .why-card .why-icon { font-size: 2rem; margin-bottom: 16px; }
+    .why-card h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 10px; color: var(--text-bright); }
+    .why-card p { color: var(--text-dim); font-size: 0.92rem; line-height: 1.7; }
+    .why-card .highlight {
+      color: var(--emerald); font-weight: 600;
+    }
+    .compare-table {
+      width: 100%; border-collapse: collapse; margin-top: 40px;
+      background: var(--bg-card); border-radius: var(--radius); overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .compare-table th {
+      padding: 16px 20px; text-align: left; font-weight: 700; font-size: 0.9rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+    }
+    .compare-table td {
+      padding: 12px 20px; font-size: 0.88rem; border-bottom: 1px solid rgba(255,255,255,0.03);
+      color: var(--text-dim);
+    }
+    .compare-table tr:last-child td { border-bottom: none; }
+    .compare-table .check { color: var(--emerald); font-weight: 600; }
+    .compare-table .cross { color: var(--text-dim); opacity: 0.4; }
   </style>
 </head>
 <body>
@@ -451,6 +482,131 @@
         <p>间隔复习，闪卡强化。完形填空、句子排序巩固记忆。</p>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- Why DeutschFlow -->
+<section style="background: rgba(255,255,255,0.01);">
+  <div class="container">
+    <div class="section-header fade-in">
+      <span class="section-tag">Why DeutschFlow</span>
+      <h2>为什么选择 DeutschFlow？</h2>
+      <p>不只是一个学习工具，而是一套完整的德语学习解决方案</p>
+    </div>
+
+    <div class="why-grid fade-in">
+      <div class="why-card">
+        <div class="why-icon">🔓</div>
+        <h3>完全开源，自由定制</h3>
+        <p>MIT 开源协议，代码完全透明。你可以自由修改、扩展、二次开发。<span class="highlight">不被任何平台绑定</span>，你的学习工具由你掌控。</p>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">🔑</div>
+        <h3>自带 API Key，零订阅费</h3>
+        <p>无需支付月费订阅。自由配置 <span class="highlight">8 大 AI 提供商的 API Key</span>，按实际用量付费（通常每月不到 1 元）。DeepSeek 等国产模型价格极低。</p>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">🏠</div>
+        <h3>数据本地存储，隐私至上</h3>
+        <p>所有学习数据保存在本地 SQLite 数据库，<span class="highlight">无需注册账号，无云端依赖</span>。Whisper 语音识别支持完全离线运行，音频不会上传。</p>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">🎯</div>
+        <h3>方法论驱动，而非功能堆砌</h3>
+        <p>围绕「尚雯婕法」四步曲（听写→精析→跟读→背诵）设计，<span class="highlight">每个功能都服务于学习方法论</span>。不是工具箱，而是学习系统。</p>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">🧩</div>
+        <h3>高度可定制</h3>
+        <p>8 个 AI 提供商自由切换、自定义播放速度、每日目标、Whisper 模型大小、深色/浅色主题。<span class="highlight">甚至支持自定义 OpenAI 兼容 API 端点</span>。</p>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">📥</div>
+        <h3>内容来源无限</h3>
+        <p>不受平台内容限制：<span class="highlight">YouTube 视频、任意播客 RSS、本地音频文件</span>。整个互联网的德语内容都是你的学习素材。</p>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">🔬</div>
+        <h3>算法驱动的精准学习</h3>
+        <p>Wagner-Fischer 编辑距离逐词对比、艾宾浩斯间隔复习算法、<span class="highlight">词频分析、CEFR 难度评估</span>。让数据指导你的学习方向。</p>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">⚡</div>
+        <h3>原生性能，流畅体验</h3>
+        <p>Flutter 原生编译，<span class="highlight">启动秒开，操作零延迟</span>。不依赖浏览器或 Electron，内存占用小，运行流畅。</p>
+      </div>
+    </div>
+
+    <!-- Comparison Table -->
+    <table class="compare-table fade-in">
+      <thead>
+        <tr>
+          <th style="width: 30%">功能对比</th>
+          <th style="width: 17.5%">DeutschFlow</th>
+          <th style="width: 17.5%">Duolingo</th>
+          <th style="width: 17.5%">Anki</th>
+          <th style="width: 17.5%">其他听写APP</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>AI 语法分析 / 翻译 / 对话</td>
+          <td class="check">&#10003; 12+ 项</td>
+          <td class="cross">&#10007;</td>
+          <td class="cross">&#10007;</td>
+          <td class="cross">&#10007;</td>
+        </tr>
+        <tr>
+          <td>自带 API Key（零订阅费）</td>
+          <td class="check">&#10003; 8 提供商</td>
+          <td class="cross">&#10007; 按月订阅</td>
+          <td class="check">&#10003; 免费</td>
+          <td class="cross">&#10007; 订阅制</td>
+        </tr>
+        <tr>
+          <td>数据完全本地存储</td>
+          <td class="check">&#10003;</td>
+          <td class="cross">&#10007; 云端</td>
+          <td class="check">&#10003;</td>
+          <td class="cross">&#10007; 云端</td>
+        </tr>
+        <tr>
+          <td>YouTube / 播客导入</td>
+          <td class="check">&#10003; 一键导入</td>
+          <td class="cross">&#10007;</td>
+          <td class="cross">&#10007;</td>
+          <td class="cross">&#10007;</td>
+        </tr>
+        <tr>
+          <td>语音识别（本地离线）</td>
+          <td class="check">&#10003; whisper.cpp</td>
+          <td class="cross">&#10007;</td>
+          <td class="cross">&#10007;</td>
+          <td class="cross">&#10007;</td>
+        </tr>
+        <tr>
+          <td>听写 + 跟读 + 口语 + 阅读</td>
+          <td class="check">&#10003; 8 种模式</td>
+          <td>部分</td>
+          <td class="cross">&#10007; 仅闪卡</td>
+          <td>部分</td>
+        </tr>
+        <tr>
+          <td>自定义学习内容</td>
+          <td class="check">&#10003; 无限</td>
+          <td class="cross">&#10007; 预设课程</td>
+          <td class="check">&#10003;</td>
+          <td>部分</td>
+        </tr>
+        <tr>
+          <td>开源可审计</td>
+          <td class="check">&#10003; MIT</td>
+          <td class="cross">&#10007;</td>
+          <td class="check">&#10003;</td>
+          <td class="cross">&#10007;</td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </section>
 
