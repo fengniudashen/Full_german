@@ -11,6 +11,7 @@ import '../widgets/metric_pill.dart';
 import '../widgets/mini_activity_chart.dart';
 import '../widgets/responsive_page.dart';
 import 'discovery_page.dart';
+import 'podcast_page.dart';
 import 'quick_notes_page.dart';
 
 class DashboardPage extends StatelessWidget {
@@ -177,6 +178,17 @@ class DashboardPage extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => page),
               );
             },
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _QuickActionCard(
+            icon: Icons.podcasts,
+            label: '播客导入',
+            color: Colors.deepPurple,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const PodcastPage()),
+            ),
           ),
         ),
       ],

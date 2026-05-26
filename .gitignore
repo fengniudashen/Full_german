@@ -20,6 +20,7 @@ Thumbs.db
 
 # Large binary downloads
 tools/*.tar.xz
+*.zip
 
 # Generated native folders can be recreated with flutter create if needed.
 android/.gradle/

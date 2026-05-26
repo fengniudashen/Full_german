@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:http/http.dart' as http;
+
 import '../models/ai_provider.dart';
 
 /// AI service supporting multiple providers (DeepSeek, OpenAI, Claude, etc.)
@@ -224,6 +226,44 @@ $question
 
 注意：不要使用箭头符号，用文字描述语调走向。
 ''');
+  }
+
+  /// Transcribe an audio file using the OpenAI-compatible Whisper API.
+  ///
+  /// Returns the transcribed German text, or throws on failure.
+  Future<String> transcribeAudio(String filePath) async {
+    if (!provider.hasKey) {
+      throw Exception('请先在设置中配置 ${provider.name} 的 API Key。');
+    }
+
+    final uri = Uri.parse('${provider.baseUrl}/v1/audio/transcriptions');
+    final request = http.MultipartRequest('POST', uri)
+      ..headers['Authorization'] = 'Bearer ${provider.apiKey}'
+      ..fields['model'] = 'whisper-1'
+      ..fields['language'] = 'de'
+      ..files.add(await http.MultipartFile.fromPath('file', filePath));
+
+    try {
+      final streamed = await request.send();
+      final body = await streamed.stream.bytesToString();
+
+      if (streamed.statusCode != 200) {
+        String message;
+        try {
+          final error = jsonDecode(body);
+          message = error['error']?['message'] ?? body;
+        } on FormatException {
+          message = body.length > 200 ? body.substring(0, 200) : body;
+        }
+        throw Exception(
+            '${provider.name} Whisper 错误 (${streamed.statusCode}): $message');
+      }
+
+      final json = jsonDecode(body) as Map<String, dynamic>;
+      return (json['text'] as String? ?? '').trim();
+    } on SocketException catch (e) {
+      throw Exception('网络错误: $e');
+    }
   }
 
   static const _systemMessage =

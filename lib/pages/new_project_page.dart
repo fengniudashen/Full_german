@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/app_state.dart';
+import '../services/subtitle_parser.dart';
 import '../services/text_parser.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
@@ -81,15 +84,31 @@ class _NewProjectPageState extends State<NewProjectPage> {
           const SizedBox(height: 16),
           _AudioImportTile(audioName: _audioName, onPick: _pickAudio),
           const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Text('德语原文', style: Theme.of(context).textTheme.bodySmall),
+              ),
+              TextButton.icon(
+                onPressed: _importTextFile,
+                icon: const Icon(Icons.file_open, size: 16),
+                label: const Text('从文件导入'),
+                style: TextButton.styleFrom(
+                  textStyle: const TextStyle(fontSize: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
           TextFormField(
             controller: _textCtrl,
             minLines: 10,
             maxLines: 18,
             decoration: InputDecoration(
-              labelText: '德语原文',
               alignLabelWithHint: true,
               hintText:
-                  'Guten Morgen! Wie geht es dir? Ich lerne Deutsch.',
+                  '粘贴德语原文，或点击「从文件导入」导入 TXT/SRT/VTT 文件',
               helperText: count > 0 ? '已解析 $count 个句子' : null,
             ),
             onChanged: (_) => setState(() {}),
@@ -194,10 +213,48 @@ class _NewProjectPageState extends State<NewProjectPage> {
     );
   }
 
+  Future<void> _importTextFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['txt', 'srt', 'vtt'],
+      allowMultiple: false,
+    );
+    final file = result?.files.single;
+    if (file == null || file.path == null) return;
+
+    try {
+      final content = await File(file.path!).readAsString();
+      final ext = file.extension?.toLowerCase() ?? '';
+
+      String text;
+      if (ext == 'vtt' || ext == 'srt') {
+        // Parse subtitle file to extract sentences
+        final parsed = SubtitleParser.parseVtt(content);
+        text = parsed.map((s) => s.text).join('\n');
+      } else {
+        text = content;
+      }
+
+      setState(() {
+        _textCtrl.text = text;
+        if (_nameCtrl.text.isEmpty) {
+          // Auto-fill project name from filename
+          final name = file.name.replaceAll(RegExp(r'\.[^.]+$'), '');
+          _nameCtrl.text = name;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('导入失败: $e')),
+      );
+    }
+  }
+
   Future<void> _pickAudio() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const ['mp3', 'wav', 'm4a', 'ogg'],
+      allowedExtensions: const ['mp3', 'wav', 'm4a', 'ogg', 'mp4', 'mkv', 'webm', 'avi', 'flac', 'aac'],
       allowMultiple: false,
       withData: false,
     );

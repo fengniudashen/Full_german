@@ -21,6 +21,7 @@ import '../widgets/responsive_page.dart';
 import 'analysis_page.dart';
 import 'listening_page.dart';
 import 'shadowing_page.dart';
+import 'speaking_page.dart';
 
 class DictationPage extends StatefulWidget {
   const DictationPage({super.key, required this.projectId});
@@ -120,6 +121,22 @@ class _DictationPageState extends State<DictationPage> {
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => ShadowingPage(projectId: widget.projectId),
+                  ),
+                );
+              },
+            ),
+          // Speaking practice
+          if (_project != null && _sentences.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.mic),
+              tooltip: '口语练习',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => SpeakingPage(
+                      projectId: widget.projectId,
+                      sentences: _sentences.map((s) => s.text).toList(),
+                    ),
                   ),
                 );
               },
