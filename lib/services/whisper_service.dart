@@ -225,7 +225,8 @@ class WhisperService {
     );
 
     // Read the generated SRT file (whisper-cli may return non-zero even on success)
-    final srtPath = '${p.withoutExtension(tempAudio)}.srt';
+    // whisper-cli creates <inputfile>.srt (appending .srt to the full filename including extension)
+    final srtPath = '$tempAudio.srt';
     final srtFile = File(srtPath);
     if (!srtFile.existsSync()) {
       final stderr = (result.stderr as String).trim();
